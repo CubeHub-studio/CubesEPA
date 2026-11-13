@@ -134,7 +134,7 @@ def create_desktop_shortcut() -> Path:
         return "'" + value.replace("'", "''") + "'"
 
     powershell = str(
-        Path(os.environ.get("WINDIR", r"C:\\Windows"))
+        Path(os.environ.get("WINDIR", r"C:\Windows"))
         / "System32"
         / "WindowsPowerShell"
         / "v1.0"
