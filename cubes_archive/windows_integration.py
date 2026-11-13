@@ -22,9 +22,7 @@ def _require_windows():
 def build_open_command(executable: str | None = None) -> str:
     """Return a correctly quoted command used by the Windows file association."""
     executable = executable or sys.executable
-    return subprocess.list2cmdline(
-        [executable, "-m", "cubes_archive", "run", "%1"]
-    )
+    return subprocess.list2cmdline([executable]) + ' -m cubes_archive run "%1"'
 
 
 def install_file_association() -> None:
