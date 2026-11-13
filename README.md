@@ -193,8 +193,8 @@ Do not run an EPA unless you trust its source and understand that it contains ex
 This is an early CLI-focused release.
 
 - No graphical interface.
-- No Windows installer or automatic `.epa` file association yet.
-- No desktop shortcut management yet.
+- Windows integration is opt-in and per-user; a conventional signed installer is not included.
+- Desktop shortcut creation is supported; automatic shortcut removal is not.
 - No cryptographic publisher signatures yet.
 - No sandbox or permission isolation.
 - Applications must provide their own dependencies or use modules available to the Python interpreter running Cubes Archive.
