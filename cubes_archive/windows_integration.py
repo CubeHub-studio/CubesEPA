@@ -120,6 +120,7 @@ def uninstall_file_association() -> bool:
     _delete_tree(winreg.HKEY_CURRENT_USER, rf"Software\Classes\{PROGID}")
     return removed
 
+
 def create_desktop_shortcut() -> Path:
     """Create a .lnk shortcut to the Cubes Archive CLI help in the user's Desktop."""
     _require_windows()
@@ -132,14 +133,6 @@ def create_desktop_shortcut() -> Path:
     def ps_quote(value: str) -> str:
         return "'" + value.replace("'", "''") + "'"
 
-    powershell = str(
-        Path(os.environ.get("WINDIR", r"C:\\Windows"))
-        / "System32"
-        / "WindowsPowerShell"
-        / "v1.0"
-        / "powershell.exe"
-    )
-    command = f'& {ps_quote(sys.executable)} -m cubes_archive --help'
     powershell = str(
         Path(os.environ.get("WINDIR", r"C:\\Windows"))
         / "System32"
