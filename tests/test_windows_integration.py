@@ -13,7 +13,7 @@ class WindowsIntegrationTests(unittest.TestCase):
         command = build_open_command(r"C:\Python314\python.exe")
         self.assertEqual(
             command,
-            r"C:\Python314\python.exe -m cubes_archive run %1",
+            'C:\\Python314\\python.exe -m cubes_archive run "%1"',
         )
 
 
