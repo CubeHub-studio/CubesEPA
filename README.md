@@ -126,6 +126,9 @@ The `publisher` field is a publisher-supplied display label. In this initial rel
 | `cubes inspect FILE.epa` | Display the archive manifest |
 | `cubes verify FILE.epa` | Check archive structure and ZIP integrity |
 | `cubes run FILE.epa` | Extract to a temporary directory and run its entrypoint |
+| `cubes install-windows` | Register the .epa file association for the current user |
+| `cubes uninstall-windows` | Remove the Cubes Archive .epa association |
+| `cubes create-shortcut` | Create a Desktop shortcut to CLI help |
 | `cubes --version` | Display the runtime version |
 | `cubes --help` | Display help |
 
