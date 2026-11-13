@@ -111,11 +111,19 @@ def create_desktop_shortcut() -> Path:
     def ps_quote(value: str) -> str:
         return "'" + value.replace("'", "''") + "'"
 
+    powershell = str(
+        Path(os.environ.get("WINDIR", r"C:\\Windows"))
+        / "System32"
+        / "WindowsPowerShell"
+        / "v1.0"
+        / "powershell.exe"
+    )
+    command = f'& {ps_quote(sys.executable)} -m cubes_archive --help'
     script = (
         "$shell = New-Object -ComObject WScript.Shell; "
         f"$link = $shell.CreateShortcut({ps_quote(str(shortcut))}); "
-        f"$link.TargetPath = {ps_quote(sys.executable)}; "
-        "$link.Arguments = '-m cubes_archive --help'; "
+        f"$link.TargetPath = {ps_quote(powershell)}; "
+        f"$link.Arguments = {ps_quote('-NoExit -Command ' + command)}; "
         f"$link.WorkingDirectory = {ps_quote(str(Path.home()))}; "
         "$link.Description = 'Cubes Archive command-line runtime'; "
         f"$link.IconLocation = {ps_quote(sys.executable + ',0')}; "
