@@ -90,14 +90,35 @@ def uninstall_file_association() -> bool:
         current = None
 
     if current == PROGID:
-        _delete_tree(winreg.HKEY_CURRENT_USER, extension_key)
+        with winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER,
+            extension_key,
+            0,
+            winreg.KEY_READ | winreg.KEY_WRITE,
+        ) as key:
+            winreg.DeleteValue(key, None)
+            try:
+                with winreg.OpenKey(
+                    key, "OpenWithProgids", 0, winreg.KEY_READ | winreg.KEY_WRITE
+                ) as open_with:
+                    try:
+                        winreg.DeleteValue(open_with, PROGID)
+                    except FileNotFoundError:
+                        pass
+                    values, subkeys, _ = winreg.QueryInfoKey(open_with)
+                if values == 0 and subkeys == 0:
+                    winreg.DeleteKey(key, "OpenWithProgids")
+            except FileNotFoundError:
+                pass
+            values, subkeys, _ = winreg.QueryInfoKey(key)
+        if values == 0 and subkeys == 0:
+            winreg.DeleteKey(winreg.HKEY_CURRENT_USER, extension_key)
         removed = True
     else:
         removed = False
 
     _delete_tree(winreg.HKEY_CURRENT_USER, rf"Software\Classes\{PROGID}")
     return removed
-
 
 def create_desktop_shortcut() -> Path:
     """Create a .lnk shortcut to the Cubes Archive CLI help in the user's Desktop."""
@@ -111,6 +132,14 @@ def create_desktop_shortcut() -> Path:
     def ps_quote(value: str) -> str:
         return "'" + value.replace("'", "''") + "'"
 
+    powershell = str(
+        Path(os.environ.get("WINDIR", r"C:\\Windows"))
+        / "System32"
+        / "WindowsPowerShell"
+        / "v1.0"
+        / "powershell.exe"
+    )
+    command = f'& {ps_quote(sys.executable)} -m cubes_archive --help'
     powershell = str(
         Path(os.environ.get("WINDIR", r"C:\\Windows"))
         / "System32"
