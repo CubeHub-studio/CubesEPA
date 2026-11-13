@@ -45,6 +45,45 @@ You can also run the CLI without installing its command entry point:
 py -m cubes_archive --help
 ```
 
+## Windows integration
+
+After installing Cubes Archive, optionally register the `.epa` extension for
+your Windows user:
+
+```powershell
+cubes install-windows
+```
+
+This writes only under
+`HKEY_CURRENT_USER\\Software\\Classes` and does not require administrator
+rights. The registered command launches the archive with the Python interpreter
+used to run Cubes Archive. Windows may still require you to choose the default
+app in **Settings → Apps → Default apps**. Windows' protected per-user
+`UserChoice` setting can take precedence over application-written associations,
+so registration does not guarantee immediate activation on every system.
+
+Double-clicking an associated `.epa` file runs its declared Python entrypoint.
+EPA applications execute with your Windows account's permissions; only open
+archives from sources you trust.
+
+Create an optional Desktop shortcut to the CLI help:
+
+```powershell
+cubes create-shortcut
+```
+
+Remove the association before uninstalling the package:
+
+```powershell
+cubes uninstall-windows
+py -m pip uninstall cubes-archive
+```
+
+Uninstall removes the association only if Cubes Archive is still the current
+per-user `.epa` handler. It does not remove another app's association. The
+shortcut is not automatically deleted; remove `Cubes Archive.lnk` from your
+Desktop manually if desired. These commands are Windows-only.
+
 ## Create your first EPA
 
 Create a project folder:
