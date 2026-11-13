@@ -10,6 +10,7 @@ import tempfile
 import zipfile
 
 from . import __version__
+from . import windows_integration
 
 MANIFEST_NAME = "epa.json"
 FORMAT_NAME = "EPA"
@@ -231,6 +232,21 @@ def build_parser() -> argparse.ArgumentParser:
     verify = commands.add_parser("verify", help="Check EPA structure and integrity.")
     verify.add_argument("archive", type=Path)
 
+    install_windows = commands.add_parser(
+        "install-windows", help="Register .epa files for the current Windows user."
+    )
+    install_windows.set_defaults(windows_action="install")
+
+    uninstall_windows = commands.add_parser(
+        "uninstall-windows", help="Remove the current user's .epa file association."
+    )
+    uninstall_windows.set_defaults(windows_action="uninstall")
+
+    shortcut = commands.add_parser(
+        "create-shortcut", help="Create a Cubes Archive shortcut on the Windows Desktop."
+    )
+    shortcut.set_defaults(windows_action="shortcut")
+
     run = commands.add_parser("run", help="Run an EPA application.")
     run.add_argument("archive", type=Path)
     run.add_argument(
@@ -265,7 +281,23 @@ def main() -> int:
             return 0
         if args.command == "run":
             return run_archive(args.archive, args.app_args)
-    except (EPAError, OSError, zipfile.BadZipFile) as exc:
+        if args.command == "install-windows":
+            windows_integration.install_file_association()
+            print("Registered .epa for the current Windows user.")
+            print("If Windows asks, choose Cubes Archive/Python as the default .epa app.")
+            return 0
+        if args.command == "uninstall-windows":
+            removed = windows_integration.uninstall_file_association()
+            if removed:
+                print("Removed the Cubes Archive .epa association.")
+            else:
+                print("Cubes Archive was not the current per-user .epa association.")
+            return 0
+        if args.command == "create-shortcut":
+            shortcut_path = windows_integration.create_desktop_shortcut()
+            print(f"Created: {shortcut_path}")
+            return 0
+    except (EPAError, OSError, RuntimeError, zipfile.BadZipFile) as exc:
         print(f"cubes: error: {exc}", file=sys.stderr)
         return 1
     return 0
