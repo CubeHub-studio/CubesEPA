@@ -9,9 +9,9 @@ An EPA is a ZIP-based application bundle containing epa.json, a Python entrypoin
 ## Features
 
 - Create and run .epa applications.
-- Require a root-level requirements.txt in every EPA (it may be empty).
+- Support an optional root-level requirements.txt using standard pip version specifiers.
 - Show a safety dialog before installing dependencies or launching the app. Continue must be clicked twice.
-- Install declared dependencies with the active Python interpreter's pip.
+- Install declared dependencies with the active Python interpreter's pip; if requirements.txt is absent, assume no third-party dependencies are needed.
 - Apply an EPA assets/icon.png to Tkinter windows, with the CubesEPA icon as fallback.
 - Tkinter desktop interface and Windows Desktop shortcut.
 - Per-user Windows file association.
@@ -44,7 +44,7 @@ This creates CubesEPA.lnk in the actual Windows Desktop folder, including a redi
 
 ## Create an EPA
 
-Every project folder must contain main.py and a root-level requirements.txt. The requirements file may be empty when the app uses only the Python standard library.
+Every project folder must contain main.py. Add requirements.txt only when the app needs third-party packages; omit it when the app uses only the Python standard library or packages already available in the runtime.
 
 Example:
 
@@ -69,7 +69,7 @@ cubes verify .\HelloEPA.epa
 cubes run .\HelloEPA.epa
 ```
 
-Before CubesEPA installs dependencies or starts the app, a warning window appears. Click Continue twice to proceed, or Cancel. If pip cannot install a dependency, the EPA is not launched.
+Before CubesEPA installs dependencies or starts the app, a warning window appears. Click Continue twice to proceed, or Cancel. The EPA metadata records the CubesEPA runtime version used to create it. If that version differs from the installed runtime—or is missing in an older EPA—the warning also explains that compatibility is not guaranteed. If pip cannot install a dependency, the EPA is not launched.
 
 ## Commands
 
