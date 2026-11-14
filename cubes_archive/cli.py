@@ -73,16 +73,16 @@ def _powershell_quote(value: str) -> str:
     return "'" + value.replace("'", "''") + "'"
 
 
-def _run_visible_powershell(commands: list[list[str]], cwd: Path) -> int:
+def _run_visible_powershell(
+    commands: list[list[str]], cwd: Path, environment: dict[str, str]
+) -> int:
     """Run commands in a new PowerShell window and leave logs visible afterward."""
     powershell = shutil.which("powershell.exe") or "powershell.exe"
-    lines = []
+    lines = ["$exitCode = 0"]
     for command in commands:
         quoted = " ".join(_powershell_quote(part) for part in command)
-        lines.append(f"& {quoted}")
-        lines.append("if ($LASTEXITCODE -ne 0) { $exitCode = $LASTEXITCODE; break }")
+        lines.append(f"if ($exitCode -eq 0) {{ & {quoted}; $exitCode = $LASTEXITCODE }}")
     lines.extend([
-        "if ($null -eq $exitCode) { $exitCode = 0 }",
         "Write-Host ''",
         "Read-Host 'EPA finished. Press Enter to close this window'",
         "exit $exitCode",
@@ -92,6 +92,7 @@ def _run_visible_powershell(commands: list[list[str]], cwd: Path) -> int:
     result = subprocess.run(
         [powershell, "-NoProfile", "-Command", script],
         cwd=cwd,
+        env=environment,
         check=False,
         creationflags=creation_flags,
     )
@@ -236,7 +237,7 @@ def run_archive(path: Path, app_args: list[str]) -> int:
             if requirements.is_file() and requirements.read_text(encoding="utf-8-sig").strip():
                 commands.append([sys.executable, "-u", "-m", "pip", "install", "-r", str(requirements)])
             commands.append(launcher_command)
-            return _run_visible_powershell(commands, workdir)
+            return _run_visible_powershell(commands, workdir, environment)
 
         if requirements.is_file() and requirements.read_text(encoding="utf-8-sig").strip():
             result = subprocess.run(
