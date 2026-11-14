@@ -22,6 +22,17 @@ def resolve_icon(application_root: Path | None = None) -> Path:
     raise FileNotFoundError(f"Cubes Archive default icon is missing: {fallback}")
 
 
+def default_ico_path() -> Path:
+    """Return the persistent per-user Windows icon path."""
+    import os
+
+    return (
+        Path(os.environ.get("LOCALAPPDATA", str(Path.home())))
+        / "CubesArchive"
+        / "cubes_archive.ico"
+    )
+
+
 def png_to_ico(png_path: Path, ico_path: Path) -> Path:
     """Wrap a PNG in a Windows ICO container (supported by modern Windows)."""
     data = png_path.read_bytes()
