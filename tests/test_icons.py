@@ -22,15 +22,14 @@ class IconTests(unittest.TestCase):
             self.assertEqual(resolve_icon(Path(folder)), default_icon_path())
 
     def test_png_is_wrapped_as_ico(self):
-        # Minimal PNG signature is sufficient for testing the ICO container helper.
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
             png = root / "icon.png"
             ico = root / "icon.ico"
-            png.write_bytes(b"\\x89PNG\\r\\n\\x1a\\n" + b"test")
+            png.write_bytes(b"\x89PNG\r\n\x1a\n" + b"test")
             png_to_ico(png, ico)
             data = ico.read_bytes()
-            self.assertEqual(data[:6], b"\\x00\\x00\\x01\\x00\\x01\\x00")
+            self.assertEqual(data[:6], b"\x00\x00\x01\x00\x01\x00")
             self.assertEqual(data[22:], png.read_bytes())
 
 
