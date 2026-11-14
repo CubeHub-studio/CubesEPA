@@ -89,7 +89,8 @@ The current format uses this structure:
   "publisher": "Publisher name",
   "description": "Short description of the application.",
   "entrypoint": "main.py",
-  "cubesepa_version": "0.3.2"
+  "cubesepa_version": "0.3.2",
+  "require_admin": false
 }
 ```
 
@@ -105,9 +106,12 @@ Field meanings:
 | `description` | Short application description. |
 | `entrypoint` | Path inside the archive to the Python entrypoint. The current CLI packager sets this to `main.py`. |
 | `cubesepa_version` | CubesEPA runtime version used to compile/package the archive. The packager fills this in automatically. |
+| `require_admin` | Boolean. When `true`, requests Windows administrator privileges at launch through the official UAC prompt. Defaults to `false`. |
 
 When using `cubes create`, do not manually write or override this metadata. The
-CLI generates it and records the installed CubesEPA version.
+CLI generates it and records the installed CubesEPA version. Use the
+`--require-admin` option when an app genuinely needs administrator privileges;
+do not hand-edit the generated manifest.
 
 Older archives may lack `cubesepa_version`. The runtime can display a compatibility
 warning when this value is missing or differs from the installed runtime version.
@@ -168,6 +172,36 @@ cubes run .\MyEPA.epa
 
 The user must confirm the safety warning before dependencies are installed or the
 application is run. The warning is not a sandbox or malware scan.
+
+### Requesting administrator privileges (Windows only)
+
+Most EPAs must run without administrator privileges. Only request elevation when
+the application's core function genuinely requires it.
+
+Create an EPA with the opt-in flag:
+
+```powershell
+cubes create .\\MyEPA --name "My EPA" --publisher "Your Publisher" --require-admin
+```
+
+This writes `"require_admin": true` into `epa.json`. Without the flag, the
+packager writes `false` and the EPA runs normally.
+
+At launch, CubesEPA explicitly identifies the administrator request in its safety
+dialog. After the user confirms that dialog, Windows displays its genuine UAC
+consent prompt. The application is launched elevated only if the user approves.
+If the user declines, the EPA is not launched. CubesEPA does not bypass, imitate,
+or suppress UAC.
+
+Declared Python dependencies are installed before the elevated application starts;
+dependency installation itself is not elevated. Administrator elevation is
+currently supported only on Windows. An EPA marked `require_admin: true` fails
+with a clear message on other operating systems rather than silently running
+without the requested privileges.
+
+Do not request administrator access for convenience, and never try to relaunch
+yourself through hidden or deceptive elevation mechanisms. Explain to the user
+which specific operation needs administrator access.
 
 ## 7. Archive layout
 
