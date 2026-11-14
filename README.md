@@ -216,7 +216,7 @@ Do not run an EPA unless you trust its source and understand that it contains ex
 
 ## Current limitations
 
-This is an early CLI-focused release.
+This is an early release; the CLI and Tkinter desktop interface are both available.
 
 - The graphical interface uses Tkinter, which must be included with your Python installation.
 - Windows integration is opt-in and per-user; a conventional signed installer is not included.
