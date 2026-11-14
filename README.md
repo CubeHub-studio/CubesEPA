@@ -32,7 +32,7 @@ The recommended Windows setup uses the included PowerShell installer. It install
 ```powershell
 git clone https://github.com/CubeHub-studio/CubesEPA.git
 cd CubesEPA
-.\\install-windows.ps1
+.\install-windows.ps1
 ```
 
 No administrator privileges are required. The installer writes the file association under the current user's registry and changes only the current user's PATH. It also updates the current PowerShell process so `cubes` is available immediately; open a new terminal for the persistent PATH change to take effect in other sessions.
@@ -40,8 +40,8 @@ No administrator privileges are required. The installer writes the file associat
 The installer accepts these optional switches:
 
 ```powershell
-.\\install-windows.ps1 -SkipFileAssociation
-.\\install-windows.ps1 -SkipDesktopShortcut
+.\install-windows.ps1 -SkipFileAssociation
+.\install-windows.ps1 -SkipDesktopShortcut
 ```
 
 ### Manual Windows installation
@@ -66,7 +66,7 @@ cubes create-shortcut
 
 ### File association and shortcut
 
-- `cubes install-windows` registers `.epa` for the current Windows user under `HKEY_CURRENT_USER\\Software\\Classes`; it does not require administrator access.
+- `cubes install-windows` registers `.epa` for the current Windows user under `HKEY_CURRENT_USER\Software\Classes`; it does not require administrator access.
 - Windows' protected `UserChoice` setting may take precedence over this registration. If double-clicking still opens another app, choose the preferred app for `.epa` in Windows Settings.
 - The installer reports a conflict rather than replacing another application's existing `.epa` association.
 - `cubes create-shortcut` creates `CubesEPA.lnk` in the actual Windows Desktop folder, including a redirected Desktop such as OneDrive.
@@ -87,7 +87,7 @@ Or run `cubes update` to reinstall the latest `main` branch from the official Gi
 From the repository folder, run:
 
 ```powershell
-.\\uninstall-windows.ps1
+.\uninstall-windows.ps1
 ```
 
 The uninstaller removes Cubes Archive's `.epa` registration, removes the CubesEPA Desktop shortcut, and uninstalls the `cubes-archive` Python package for the default Python 3 installation. It intentionally leaves the Python user Scripts directory on PATH because other Python command-line tools may use that shared directory.
@@ -125,9 +125,9 @@ pillow>=10
 Create, verify, and run:
 
 ```powershell
-cubes create .\\HelloEPA --publisher "Cubes, Studio." --app-version 1.0.0
-cubes verify .\\HelloEPA.epa
-cubes run .\\HelloEPA.epa
+cubes create .\HelloEPA --publisher "Cubes, Studio." --app-version 1.0.0
+cubes verify .\HelloEPA.epa
+cubes run .\HelloEPA.epa
 ```
 
 You can also double-click an `.epa` file after registering the association, subject to Windows' default-app settings.
@@ -137,7 +137,7 @@ Before CubesEPA installs dependencies or starts the app, a warning window appear
 To rebuild an existing EPA in place after changing its source folder, run:
 
 ```powershell
-cubes update-epa .\\MyEPA.epa .\\MyEPA
+cubes update-epa .\MyEPA.epa .\MyEPA
 ```
 
 This rebuilds the same `.epa` file, preserving its app name, app version, publisher, description, administrator requirement, and additional manifest metadata. It updates the recorded CubesEPA packaging version.
