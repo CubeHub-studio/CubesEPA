@@ -289,3 +289,26 @@ When you finish creating an EPA, report:
 Prefer using the installed `cubes` command. If it is unavailable, tell the user that
 CubesEPA must be installed before using its packager; do not fabricate an archive or
 substitute an undocumented format.
+
+
+## Windows setup and update scripts
+
+For a clean Windows installation, run the one-line bootstrapper:
+
+```powershell
+irm https://raw.githubusercontent.com/CubeHub-studio/CubesEPA/main/setup-windows.ps1 | iex
+```
+
+It downloads the official repository to a temporary directory and runs
+`install-windows.ps1`. The installer installs the package for the default
+Python 3 interpreter, adds that interpreter's user Scripts directory to the
+user PATH without replacing existing PATH entries, registers the per-user
+`.epa` association, and creates or refreshes the Desktop shortcut.
+
+For a full Windows update, run `update-windows.ps1`. It opens a separate
+PowerShell console, requests UAC elevation so it can stop EPA runtime processes
+including elevated ones, installs the latest official GitHub main branch,
+deletes the existing CubesEPA Desktop shortcut, recreates it using the updated
+runtime, prints progress and errors, and closes its console shortly after
+completion. The updater must not terminate unrelated Python processes: it
+matches only the CubesEPA `run` and launcher command lines.
