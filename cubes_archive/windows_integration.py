@@ -10,6 +10,8 @@ from pathlib import Path
 import subprocess
 import sys
 
+from .icons import default_icon_path, png_to_ico
+
 PROGID = "CubesArchive.EPA"
 EXTENSION = ".epa"
 
@@ -122,14 +124,21 @@ def uninstall_file_association() -> bool:
 
 
 def create_desktop_shortcut() -> Path:
-    """Create a .lnk shortcut to the Cubes Archive CLI help in the user's Desktop."""
+    """Create a Desktop shortcut that opens the CubesEPA Tkinter interface."""
     _require_windows()
     desktop = Path.home() / "Desktop"
     desktop.mkdir(parents=True, exist_ok=True)
-    shortcut = desktop / "Cubes Archive.lnk"
+    shortcut = desktop / "CubesEPA.lnk"
 
-    # Encode the PowerShell script as UTF-16LE for -EncodedCommand. Paths are
-    # inserted as PowerShell single-quoted literals with embedded quotes escaped.
+    pythonw = Path(sys.executable).with_name("pythonw.exe")
+    target = pythonw if pythonw.is_file() else Path(sys.executable)
+    icon_path = (
+        Path(os.environ.get("LOCALAPPDATA", str(Path.home())))
+        / "CubesArchive"
+        / "cubes_archive.ico"
+    )
+    png_to_ico(default_icon_path(), icon_path)
+
     def ps_quote(value: str) -> str:
         return "'" + value.replace("'", "''") + "'"
 
@@ -140,20 +149,21 @@ def create_desktop_shortcut() -> Path:
         / "v1.0"
         / "powershell.exe"
     )
-    command = f'& {ps_quote(sys.executable)} -m cubes_archive --help'
     script = (
         "$shell = New-Object -ComObject WScript.Shell; "
         f"$link = $shell.CreateShortcut({ps_quote(str(shortcut))}); "
-        f"$link.TargetPath = {ps_quote(powershell)}; "
-        f"$link.Arguments = {ps_quote('-NoExit -Command ' + command)}; "
+        f"$link.TargetPath = {ps_quote(str(target))}; "
+        f"$link.Arguments = {ps_quote('-m cubes_archive gui')}; "
         f"$link.WorkingDirectory = {ps_quote(str(Path.home()))}; "
-        "$link.Description = 'Cubes Archive command-line runtime'; "
-        f"$link.IconLocation = {ps_quote(sys.executable + ',0')}; "
+        "$link.Description = 'CubesEPA — Cubes Archive desktop app'; "
+        f"$link.IconLocation = {ps_quote(str(icon_path) + ',0')}; "
         "$link.Save()"
     )
-    encoded = __import__("base64").b64encode(script.encode("utf-16le")).decode("ascii")
+    encoded = __import__("base64").b64encode(
+        script.encode("utf-16le")
+    ).decode("ascii")
     subprocess.run(
-        ["powershell.exe", "-NoProfile", "-EncodedCommand", encoded],
+        [powershell, "-NoProfile", "-EncodedCommand", encoded],
         check=True,
         capture_output=True,
         text=True,
