@@ -164,7 +164,12 @@ def run_archive(path: Path, app_args: list[str]) -> int:
         environment = os.environ.copy()
         environment["CUBES_EPA_ICON"] = str(resolve_icon(workdir))
         environment["CUBES_EPA_NAME"] = str(manifest["name"])
-        result = subprocess.run([sys.executable, "-m", "cubes_archive.launcher", str(entrypoint), *app_args], cwd=workdir, env=environment, check=False)
+        launcher_python = sys.executable
+        if os.name == "nt":
+            pythonw = Path(sys.executable).with_name("pythonw.exe")
+            if pythonw.is_file():
+                launcher_python = str(pythonw)
+        result = subprocess.run([launcher_python, "-m", "cubes_archive.launcher", str(entrypoint), *app_args], cwd=workdir, env=environment, check=False)
         return result.returncode
     except (OSError, UnicodeError) as exc:
         raise EPAError(f"Could not prepare EPA launch: {exc}") from exc
@@ -231,7 +236,7 @@ def main() -> int:
         if args.command == "create-shortcut":
             print(f"Created: {windows_integration.create_desktop_shortcut()}")
             return 0
-    except (EPAError, OSError, RuntimeError, zipfile.BadZipFile, subprocess.SubprocessError) as exc:
+    except Exception as exc:
         if sys.stderr is None:
             try:
                 from tkinter import messagebox
