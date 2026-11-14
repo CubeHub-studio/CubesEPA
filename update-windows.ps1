@@ -7,7 +7,7 @@ $ErrorActionPreference = "Stop"
 if (-not $Child) {
     $powershell = Join-Path $PSHOME "powershell.exe"
     $script = $PSCommandPath
-    Start-Process -FilePath $powershell -ArgumentList @(
+    Start-Process -FilePath $powershell -Verb RunAs -ArgumentList @(
         "-NoProfile", "-File", "`"$script`"", "-Child"
     ) -WindowStyle Normal
     exit 0
@@ -18,19 +18,7 @@ try {
     Write-Host "CubesEPA updater" -ForegroundColor Cyan
     Write-Host "Searching for running EPA processes..."
 
-    # Elevation ensures the updater can stop EPAs that were themselves launched as administrator.
-    $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
-    $principal = [Security.Principal.WindowsPrincipal]::new($identity)
-    if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-        Write-Host "Requesting administrator permission to stop every EPA process..."
-        $powershell = Join-Path $PSHOME "powershell.exe"
-        $script = $PSCommandPath
-        Start-Process -FilePath $powershell -Verb RunAs -ArgumentList @(
-            "-NoProfile", "-File", "`"$script`"", "-Child"
-        ) -WindowStyle Normal
-        exit 0
-    }
-
+    # This child was started with the genuine Windows UAC prompt.
     $processes = @(
         Get-CimInstance Win32_Process |
         Where-Object {
