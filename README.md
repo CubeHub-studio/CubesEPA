@@ -80,7 +80,13 @@ From the repository folder, install the checked-out version:
 py -3 -m pip install --user --upgrade .
 ```
 
-Or run `cubes update` to reinstall the latest `main` branch from the official GitHub repository. Updating is free and requires internet access. On Windows, the update command also refreshes the CubesEPA Desktop shortcut so it points to the current Python runtime and icon.
+Use the separate Windows updater when you want the full update workflow:
+
+```powershell
+.\\update-windows.ps1
+```
+
+It opens a separate PowerShell window, requests administrator permission so it can stop both ordinary and elevated EPA processes, installs the latest `main` branch, deletes the old Desktop shortcut, creates a fresh one, displays its logs, and closes the window when finished. Updating is free and requires internet access. The simpler `cubes update` command remains available and refreshes the shortcut without the full process-stop workflow.
 
 ## Uninstall
 
