@@ -6,7 +6,15 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$repoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repoRoot = if (-not [string]::IsNullOrWhiteSpace($PSScriptRoot)) {
+    $PSScriptRoot
+}
+elseif (-not [string]::IsNullOrWhiteSpace($env:CUBESEPA_INSTALLER_ROOT)) {
+    $env:CUBESEPA_INSTALLER_ROOT
+}
+else {
+    Split-Path -Parent $MyInvocation.MyCommand.Path
+}
 if (-not (Test-Path -LiteralPath (Join-Path $repoRoot "pyproject.toml"))) {
     throw "Run this installer from a CubesEPA repository checkout."
 }
