@@ -10,7 +10,7 @@ from pathlib import Path
 import subprocess
 import sys
 
-from .icons import default_icon_path, png_to_ico
+from .icons import default_icon_path, default_ico_path, png_to_ico
 
 PROGID = "CubesArchive.EPA"
 EXTENSION = ".epa"
@@ -49,11 +49,12 @@ def install_file_association() -> None:
         with winreg.CreateKey(key, "OpenWithProgids") as open_with:
             winreg.SetValueEx(open_with, PROGID, 0, winreg.REG_NONE, b"")
 
+    icon_path = png_to_ico(default_icon_path(), default_ico_path())
     with winreg.CreateKey(winreg.HKEY_CURRENT_USER, progid_key) as key:
         winreg.SetValueEx(key, None, 0, winreg.REG_SZ, "Executable Python Archive")
         with winreg.CreateKey(key, r"DefaultIcon") as icon_key:
             winreg.SetValueEx(
-                icon_key, None, 0, winreg.REG_SZ, f'"{sys.executable}",0'
+                icon_key, None, 0, winreg.REG_SZ, f'"{icon_path}",0'
             )
         with winreg.CreateKey(key, r"shell\open\command") as command_key:
             winreg.SetValueEx(
@@ -132,12 +133,7 @@ def create_desktop_shortcut() -> Path:
 
     pythonw = Path(sys.executable).with_name("pythonw.exe")
     target = pythonw if pythonw.is_file() else Path(sys.executable)
-    icon_path = (
-        Path(os.environ.get("LOCALAPPDATA", str(Path.home())))
-        / "CubesArchive"
-        / "cubes_archive.ico"
-    )
-    png_to_ico(default_icon_path(), icon_path)
+    icon_path = png_to_ico(default_icon_path(), default_ico_path())
 
     def ps_quote(value: str) -> str:
         return "'" + value.replace("'", "''") + "'"
