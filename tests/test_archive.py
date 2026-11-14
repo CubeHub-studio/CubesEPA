@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from cubes_archive import __version__
-from cubes_archive.cli import EPAError, create_archive, load_manifest, verify_archive
+from cubes_archive.cli import EPAError, create_archive, load_manifest, update_archive, verify_archive
 
 
 class ArchiveTests(unittest.TestCase):
@@ -29,6 +29,29 @@ class ArchiveTests(unittest.TestCase):
             with patch("builtins.print"):
                 verify_archive(output)
 
+
+    def test_update_archive_replaces_contents_and_preserves_metadata(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            source = root / "project"
+            source.mkdir()
+            (source / "main.py").write_text("print('old')\\n", encoding="utf-8")
+            output = root / "existing.epa"
+            create_archive(source, output, "Existing App", "2.4.1", "Cubes, Studio", "Keep this description", True)
+            (source / "main.py").write_text("print('new')\\n", encoding="utf-8")
+            (source / "new_asset.txt").write_text("updated", encoding="utf-8")
+
+            update_archive(output, source)
+
+            with zipfile.ZipFile(output) as archive:
+                manifest = load_manifest(archive)
+                self.assertEqual(manifest["name"], "Existing App")
+                self.assertEqual(manifest["version"], "2.4.1")
+                self.assertEqual(manifest["publisher"], "Cubes, Studio")
+                self.assertEqual(manifest["description"], "Keep this description")
+                self.assertIs(manifest["require_admin"], True)
+                self.assertEqual(archive.read("main.py"), b"print('new')\\n")
+                self.assertEqual(archive.read("new_asset.txt"), b"updated")
 
     def test_require_admin_flag_is_written_to_manifest(self):
         with tempfile.TemporaryDirectory() as folder:
