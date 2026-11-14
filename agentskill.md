@@ -147,7 +147,23 @@ The CLI recursively includes regular files from the project directory, preservin
 their relative paths. It rejects symbolic links and reserves `epa.json` for generated
 metadata. The resulting file is a ZIP archive using DEFLATE compression.
 
-## 6. Validate the archive
+## 6. Update an existing EPA
+
+When the source project changes, rebuild the existing archive in place rather than
+creating a separate output file:
+
+```powershell
+cubes update-epa .\\MyEPA.epa .\\MyEPA
+```
+
+Arguments are the existing EPA path followed by the updated source folder. The
+source folder must contain `main.py`. The updater validates the old archive,
+repackages the source files into the same archive path, and preserves the existing
+application name, app version, publisher, description, administrator requirement,
+and other manifest metadata. It refreshes the recorded CubesEPA packaging version.
+The update replaces the old archive contents with the source folder contents.
+
+## 7. Validate the archive
 
 After creating an archive, run both checks:
 
@@ -203,7 +219,7 @@ Do not request administrator access for convenience, and never try to relaunch
 yourself through hidden or deceptive elevation mechanisms. Explain to the user
 which specific operation needs administrator access.
 
-## 7. Archive layout
+## 8. Archive layout
 
 A typical finished archive contains:
 
@@ -226,7 +242,7 @@ nested folder unless the entrypoint and all application paths are deliberately
 configured for that layout. With the current `cubes create` command, the root
 `main.py` requirement is enforced and the generated entrypoint is `main.py`.
 
-## 8. Runtime behavior agents must account for
+## 9. Runtime behavior agents must account for
 
 - CubesEPA extracts archive contents into a temporary directory before launch.
 - The application working directory is set to the extracted project directory.
@@ -240,7 +256,7 @@ configured for that layout. With the current `cubes create` command, the root
 - The application should save persistent user data to an intentional user-data
   location, not rely on writing into the temporary extraction directory.
 
-## 9. Security and quality requirements
+## 10. Security and quality requirements
 
 AI agents creating EPAs must follow these rules:
 
@@ -259,7 +275,7 @@ AI agents creating EPAs must follow these rules:
 - Never claim that an archive was built or tested unless the corresponding command
   actually succeeded.
 
-## 10. Completion report
+## 11. Completion report
 
 When you finish creating an EPA, report:
 
