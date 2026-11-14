@@ -33,11 +33,24 @@ try {
     )
 
     foreach ($process in $processes) {
-        Write-Host ("Stopping EPA process {0} (PID {1})..." -f $process.Name, $process.ProcessId)
-        Stop-Process -Id $process.ProcessId -Force -ErrorAction Stop
+        Write-Host ("Requesting EPA process {0} (PID {1}) to close..." -f $process.Name, $process.ProcessId)
+        try {
+            $runningProcess = Get-Process -Id $process.ProcessId -ErrorAction Stop
+            [void]$runningProcess.CloseMainWindow()
+        }
+        catch {
+            # A console-only or already-exiting process may not have a main window.
+        }
     }
     if ($processes.Count -gt 0) {
-        Start-Sleep -Seconds 2
+        Write-Host "Waiting up to 5 seconds for EPA apps to close..."
+        Start-Sleep -Seconds 5
+        foreach ($process in $processes) {
+            if (Get-Process -Id $process.ProcessId -ErrorAction SilentlyContinue) {
+                Write-Host ("Force-stopping remaining EPA process PID {0}..." -f $process.ProcessId)
+                Stop-Process -Id $process.ProcessId -Force -ErrorAction Stop
+            }
+        }
         Write-Host ("Stopped {0} EPA process(es)." -f $processes.Count) -ForegroundColor Green
     }
     else {
