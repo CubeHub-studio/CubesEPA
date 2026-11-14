@@ -133,12 +133,12 @@ def main() -> int:
         return 1
 
     print("Registering the .epa file association...")
-    result = subprocess.run([str(cubes_exe), "install-windows"], check=False)
+    result = subprocess.run([sys.executable, "-m", "cubes_archive.cli", "install-windows"], check=False)
     if result.returncode:
         print("Warning: the .epa association could not be registered.")
 
     print("Creating the CubesEPA Desktop shortcut...")
-    result = subprocess.run([str(cubes_exe), "create-shortcut"], check=False)
+    result = subprocess.run([sys.executable, "-m", "cubes_archive.cli", "create-shortcut"], check=False)
     if result.returncode:
         print("Warning: the Desktop shortcut could not be created.")
 
