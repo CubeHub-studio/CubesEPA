@@ -56,9 +56,9 @@ def load_manifest(archive: zipfile.ZipFile) -> dict:
         raise EPAError(f"Entrypoint '{entrypoint}' does not exist in the archive.")
     try:
         requirements_info = archive.getinfo(REQUIREMENTS_NAME)
-    except KeyError as exc:
-        raise EPAError(f"Missing required root-level {REQUIREMENTS_NAME}.") from exc
-    if requirements_info.is_dir():
+    except KeyError:
+        requirements_info = None
+    if requirements_info is not None and requirements_info.is_dir():
         raise EPAError(f"{REQUIREMENTS_NAME} must be a file, not a directory.")
     return manifest
 
@@ -68,12 +68,12 @@ def create_archive(source: Path, output: Path, name: str | None, version: str, p
         raise EPAError(f"Source directory does not exist: {source}")
     if not (source / "main.py").is_file():
         raise EPAError("Source directory must contain main.py.")
-    if not (source / REQUIREMENTS_NAME).is_file():
-        raise EPAError(f"Source directory must contain a root-level {REQUIREMENTS_NAME}. It may be empty if there are no dependencies.")
+    # requirements.txt is optional: omitted means the EPA uses only Python's
+    # standard library (or dependencies already available in the environment).
     output = output.resolve()
     if output == source or source in output.parents:
         raise EPAError("Output archive cannot be placed inside the source directory.")
-    manifest = {"format": FORMAT_NAME, "format_version": FORMAT_VERSION, "name": name or source.name, "version": version, "publisher": publisher, "description": description, "entrypoint": "main.py"}
+    manifest = {"format": FORMAT_NAME, "format_version": FORMAT_VERSION, "name": name or source.name, "version": version, "publisher": publisher, "description": description, "entrypoint": "main.py", "cubesepa_version": __version__}
     output.parent.mkdir(parents=True, exist_ok=True)
     temporary = output.with_suffix(output.suffix + ".tmp")
     try:
@@ -100,7 +100,7 @@ def inspect_archive(path: Path) -> None:
         manifest = load_manifest(archive)
         print(json.dumps(manifest, indent=2))
         print(f"\nFiles: {sum(not item.is_dir() for item in archive.infolist())}")
-        print(f"Dependencies file: {REQUIREMENTS_NAME}")
+        print(f"Dependencies file: {REQUIREMENTS_NAME if REQUIREMENTS_NAME in archive.namelist() else 'none (Python standard library assumed)'}")
 
 def verify_archive(path: Path) -> None:
     try:
@@ -117,7 +117,7 @@ def verify_archive(path: Path) -> None:
         print(f"Application: {manifest['name']} {manifest['version']}")
         print(f"Publisher label: {manifest['publisher']}")
         print(f"Entrypoint: {manifest['entrypoint']}")
-        print(f"Dependencies: {REQUIREMENTS_NAME} present")
+        print(f"Dependencies: {REQUIREMENTS_NAME + ' present' if REQUIREMENTS_NAME in zipfile.ZipFile(path, 'r').namelist() else 'none (Python standard library assumed)'}")
         print(f"Archive SHA-256: {sha256_file(path)}")
         print("\nNote: this checks archive structure and integrity, not publisher identity or application safety.")
     except zipfile.BadZipFile as exc:
@@ -150,10 +150,10 @@ def run_archive(path: Path, app_args: list[str]) -> int:
     requirements = workdir / REQUIREMENTS_NAME
     try:
         from .safety_dialog import confirm_launch
-        if not confirm_launch(manifest["name"]):
+        if not confirm_launch(manifest["name"], manifest.get("cubesepa_version")):
             print("Launch cancelled.")
             return 1
-        if requirements.read_text(encoding="utf-8-sig").strip():
+        if requirements.is_file() and requirements.read_text(encoding="utf-8-sig").strip():
             print(f"Installing dependencies from {REQUIREMENTS_NAME}...", flush=True)
             result = subprocess.run([sys.executable, "-m", "pip", "install", "-r", str(requirements)], cwd=workdir, check=False, capture_output=True, text=True)
             if result.returncode:
