@@ -54,8 +54,12 @@ def load_manifest(archive: zipfile.ZipFile) -> dict:
     names = archive.namelist()
     if entrypoint not in names:
         raise EPAError(f"Entrypoint '{entrypoint}' does not exist in the archive.")
-    if REQUIREMENTS_NAME not in names:
-        raise EPAError(f"Missing required root-level {REQUIREMENTS_NAME}.")
+    try:
+        requirements_info = archive.getinfo(REQUIREMENTS_NAME)
+    except KeyError as exc:
+        raise EPAError(f"Missing required root-level {REQUIREMENTS_NAME}.") from exc
+    if requirements_info.is_dir():
+        raise EPAError(f"{REQUIREMENTS_NAME} must be a file, not a directory.")
     return manifest
 
 def create_archive(source: Path, output: Path, name: str | None, version: str, publisher: str, description: str) -> None:
@@ -151,9 +155,10 @@ def run_archive(path: Path, app_args: list[str]) -> int:
             return 1
         if requirements.read_text(encoding="utf-8-sig").strip():
             print(f"Installing dependencies from {REQUIREMENTS_NAME}...", flush=True)
-            result = subprocess.run([sys.executable, "-m", "pip", "install", "-r", str(requirements)], cwd=workdir, check=False)
+            result = subprocess.run([sys.executable, "-m", "pip", "install", "-r", str(requirements)], cwd=workdir, check=False, capture_output=True, text=True)
             if result.returncode:
-                raise EPAError(f"Dependency installation failed (pip exit code {result.returncode}); EPA was not launched.")
+                details = (result.stderr or result.stdout or "").strip()
+                raise EPAError(f"Dependency installation failed (pip exit code {result.returncode}); EPA was not launched.\n{details}")
         print(f"Launching {manifest['name']} {manifest['version']}...", flush=True)
         environment = os.environ.copy()
         environment["CUBES_EPA_ICON"] = str(resolve_icon(workdir))
@@ -226,7 +231,14 @@ def main() -> int:
             print(f"Created: {windows_integration.create_desktop_shortcut()}")
             return 0
     except (EPAError, OSError, RuntimeError, zipfile.BadZipFile, subprocess.SubprocessError) as exc:
-        print(f"cubes: error: {exc}", file=sys.stderr)
+        if sys.stderr is None:
+            try:
+                from tkinter import messagebox
+                messagebox.showerror("CubesEPA — Error", str(exc))
+            except Exception:
+                pass
+        else:
+            print(f"cubes: error: {exc}", file=sys.stderr)
         return 1
     return 0
 
