@@ -27,13 +27,13 @@ An EPA is a ZIP-based application bundle containing `epa.json`, a Python entrypo
 
 ## Windows installation
 
-The recommended Windows setup uses the included PowerShell installer. It installs Cubes Archive for the default Python 3 installation, adds that interpreter's user Scripts directory to your **user** PATH, registers the `.epa` association, and creates a Desktop shortcut.
+The recommended Windows setup uses the one-step PowerShell bootstrapper. Run this in PowerShell; it downloads the official repository temporarily, installs CubesEPA, adds Python's user Scripts directory to your **user** PATH, registers the `.epa` association, and creates a Desktop shortcut. No Git clone is needed:
 
 ```powershell
-git clone https://github.com/CubeHub-studio/CubesEPA.git
-cd CubesEPA
-.\install-windows.ps1
+irm https://raw.githubusercontent.com/CubeHub-studio/CubesEPA/main/setup-windows.ps1 | iex
 ```
+
+You can also clone the repository and run `.install-windows.ps1` directly. The installer normally requires no administrator privileges.
 
 No administrator privileges are required. The installer writes the file association under the current user's registry and changes only the current user's PATH. It also updates the current PowerShell process so `cubes` is available immediately; open a new terminal for the persistent PATH change to take effect in other sessions.
 
@@ -83,7 +83,7 @@ py -3 -m pip install --user --upgrade .
 Use the separate Windows updater when you want the full update workflow:
 
 ```powershell
-.\\update-windows.ps1
+.\update-windows.ps1
 ```
 
 It opens a separate PowerShell window, requests administrator permission so it can stop both ordinary and elevated EPA processes, installs the latest `main` branch, deletes the old Desktop shortcut, creates a fresh one, displays its logs, and closes the window when finished. Updating is free and requires internet access. The simpler `cubes update` command remains available and refreshes the shortcut without the full process-stop workflow.
