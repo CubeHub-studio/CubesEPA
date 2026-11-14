@@ -20,7 +20,8 @@ VERSION_WARNING = (
 
 
 def confirm_launch(
-    app_name: str, compiled_version: str | None = None
+    app_name: str, compiled_version: str | None = None,
+    requires_admin: bool = False,
 ) -> tuple[bool, bool]:
     """Return (confirmed, run_silently); silent mode is enabled by default."""
     dialog = tk.Tk()
@@ -45,6 +46,19 @@ def confirm_launch(
         wraplength=470,
         justify="left",
     ).pack(anchor="w")
+
+    if requires_admin:
+        ttk.Label(
+            outer,
+            text=(
+                "ADMINISTRATOR ACCESS REQUESTED: If you continue, Windows will "
+                "show its official User Account Control (UAC) prompt. The app "
+                "will run with administrator privileges only if you approve it. "
+                "Cancel the Windows prompt to stop the launch."
+            ),
+            wraplength=470,
+            justify="left",
+        ).pack(anchor="w", pady=(10, 0))
 
     if (
         not isinstance(compiled_version, str)
