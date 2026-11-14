@@ -112,12 +112,13 @@ def verify_archive(path: Path) -> None:
             if bad_member:
                 raise EPAError(f"ZIP integrity check failed at: {bad_member}")
             manifest = load_manifest(archive)
+            has_requirements = REQUIREMENTS_NAME in archive.namelist()
         print("EPA structure: OK")
         print("ZIP integrity: OK")
         print(f"Application: {manifest['name']} {manifest['version']}")
         print(f"Publisher label: {manifest['publisher']}")
         print(f"Entrypoint: {manifest['entrypoint']}")
-        print(f"Dependencies: {REQUIREMENTS_NAME + ' present' if REQUIREMENTS_NAME in zipfile.ZipFile(path, 'r').namelist() else 'none (Python standard library assumed)'}")
+        print(f"Dependencies: {REQUIREMENTS_NAME + ' present' if has_requirements else 'none (Python standard library assumed)'}")
         print(f"Archive SHA-256: {sha256_file(path)}")
         print("\nNote: this checks archive structure and integrity, not publisher identity or application safety.")
     except zipfile.BadZipFile as exc:
