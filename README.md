@@ -62,7 +62,7 @@ requests>=2.32
 pillow>=10
 ```
 
-Create and run:
+To update an existing EPA in place after changing its source folder, run:\n\n```powershell\ncubes update-epa .\\MyEPA.epa .\\MyEPA\n```\n\nThis rebuilds the same `.epa` file, preserving its app name, app version, publisher, description, administrator requirement, and any additional manifest metadata. It updates the recorded CubesEPA packaging version.\n\nCreate and run:
 
 ```powershell
 cubes create .\HelloEPA --publisher "Cubes, Studio." --app-version 1.0.0
@@ -77,7 +77,7 @@ Before CubesEPA installs dependencies or starts the app, a warning window appear
 | Command | Purpose |
 |---|---|
 | cubes gui | Open the desktop interface |
-| cubes create FOLDER | Package a project |
+| cubes create FOLDER | Package a project |\n| cubes update-epa FILE.epa SOURCE | Replace an existing EPA with the latest source files while preserving its metadata |
 | cubes run FILE.epa | Confirm and launch an EPA |
 | cubes inspect FILE.epa | Show EPA metadata |
 | cubes verify FILE.epa | Check archive structure and integrity |
