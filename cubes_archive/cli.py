@@ -249,7 +249,7 @@ def build_parser() -> argparse.ArgumentParser:
     uninstall_windows.set_defaults(windows_action="uninstall")
 
     shortcut = commands.add_parser(
-        "create-shortcut", help="Create a Cubes Archive shortcut on the Windows Desktop."
+        "create-shortcut", help="Create a Desktop shortcut that opens the CubesEPA GUI."
     )
     shortcut.set_defaults(windows_action="shortcut")
 
