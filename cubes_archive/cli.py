@@ -297,10 +297,14 @@ def run_archive(path: Path, app_args: list[str]) -> int:
                         raise EPAError(f"Dependency installation failed (pip exit code {result}). EPA was not launched.")
 
             elevated_python = sys.executable
-            if run_silently:
-                pythonw = Path(sys.executable).with_name("pythonw.exe")
-                if pythonw.is_file():
-                    elevated_python = str(pythonw)
+            if os.name == "nt":
+                preferred_python = (
+                    Path(sys.executable).with_name("pythonw.exe")
+                    if run_silently
+                    else Path(sys.executable).with_name("python.exe")
+                )
+                if preferred_python.is_file():
+                    elevated_python = str(preferred_python)
             elevated_command = [
                 elevated_python, "-u", "-m", "cubes_archive.launcher",
                 str(entrypoint), *app_args,
