@@ -2,6 +2,7 @@
 from __future__ import annotations
 import tkinter as tk
 from tkinter import ttk
+from . import __version__
 
 WARNING_TEXT = (
     "EPA files cannot be confirmed safe, be aware that neither Cubes Studio "
@@ -27,7 +28,7 @@ def confirm_launch(app_name: str, compiled_version: str | None = None) -> bool:
     outer.pack(fill="both", expand=True)
     ttk.Label(outer, text=f"Launching: {app_name}", font=("Segoe UI", 11, "bold")).pack(anchor="w", pady=(0, 10))
     ttk.Label(outer, text=WARNING_TEXT, wraplength=470, justify="left").pack(anchor="w")
-    if not isinstance(compiled_version, str) or not compiled_version.strip() or compiled_version != __import__("cubes_archive").__version__:
+    if not isinstance(compiled_version, str) or not compiled_version.strip() or compiled_version != __version__:
         ttk.Label(outer, text=VERSION_WARNING, wraplength=470, justify="left").pack(anchor="w", pady=(10, 0))
     buttons = ttk.Frame(outer)
     buttons.pack(fill="x", pady=(18, 0))
