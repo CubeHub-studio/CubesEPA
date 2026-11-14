@@ -22,7 +22,9 @@ def _desktop_directory() -> Path:
     return desktop
 
 def build_open_command(executable: str | None = None) -> str:
-    executable = executable or sys.executable
+    if executable is None:
+        pythonw = Path(sys.executable).with_name("pythonw.exe")
+        executable = str(pythonw) if os.name == "nt" and pythonw.is_file() else sys.executable
     return subprocess.list2cmdline([executable]) + ' -m cubes_archive run "%1"'
 
 def install_file_association() -> None:
