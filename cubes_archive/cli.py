@@ -295,7 +295,7 @@ def main() -> int:
             return gui_main()
         if args.command == "update":
             command = [
-                sys.executable, "-m", "pip", "install", "--upgrade",
+                sys.executable, "-m", "pip", "install", "--user", "--upgrade",
                 "--force-reinstall",
                 "https://github.com/CubeHub-studio/CubesEPA/archive/refs/heads/main.zip",
             ]
