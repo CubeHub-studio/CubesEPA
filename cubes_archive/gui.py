@@ -86,7 +86,12 @@ class CubesArchiveApp:
         if not self.selected or not self.selected.is_file():
             return
         try:
-            subprocess.Popen([sys.executable, "-m", "cubes_archive", "run", str(self.selected)], cwd=str(Path.home()))
+            runtime_python = sys.executable
+            if os.name == "nt":
+                pythonw = Path(sys.executable).with_name("pythonw.exe")
+                if pythonw.is_file():
+                    runtime_python = str(pythonw)
+            subprocess.Popen([runtime_python, "-m", "cubes_archive", "run", str(self.selected)], cwd=str(Path.home()))
             self.status.set(f"Launching {self.selected.name} — safety confirmation required")
         except OSError as exc:
             messagebox.showerror("Launch failed", str(exc))
