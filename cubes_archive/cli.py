@@ -157,7 +157,7 @@ def _run_elevated_windows(command: list[str], cwd: Path) -> int:
     finally:
         kernel32.CloseHandle(info.hProcess)
 
-def create_archive(source: Path, output: Path, name: str | None, version: str, publisher: str, description: str, require_admin: bool = False) -> None:
+def create_archive(source: Path, output: Path, name: str | None, version: str, publisher: str, description: str, require_admin: bool = False, existing_manifest: dict | None = None) -> None:
     source = source.resolve()
     if not source.is_dir():
         raise EPAError(f"Source directory does not exist: {source}")
@@ -168,7 +168,8 @@ def create_archive(source: Path, output: Path, name: str | None, version: str, p
     output = output.resolve()
     if output == source or source in output.parents:
         raise EPAError("Output archive cannot be placed inside the source directory.")
-    manifest = {"format": FORMAT_NAME, "format_version": FORMAT_VERSION, "name": name or source.name, "version": version, "publisher": publisher, "description": description, "entrypoint": "main.py", "cubesepa_version": __version__, "require_admin": require_admin}
+    manifest = dict(existing_manifest or {})
+    manifest.update({"format": FORMAT_NAME, "format_version": FORMAT_VERSION, "name": name or source.name, "version": version, "publisher": publisher, "description": description, "entrypoint": "main.py", "cubesepa_version": __version__, "require_admin": require_admin})
     output.parent.mkdir(parents=True, exist_ok=True)
     temporary = output.with_suffix(output.suffix + ".tmp")
     try:
@@ -189,6 +190,33 @@ def create_archive(source: Path, output: Path, name: str | None, version: str, p
         raise
     print(f"Created: {output}")
     print(f"SHA-256: {sha256_file(output)}")
+
+
+
+def update_archive(archive_path: Path, source: Path) -> None:
+    """Rebuild an existing EPA from an updated source folder, preserving its metadata."""
+    archive_path = archive_path.resolve()
+    source = source.resolve()
+    if not archive_path.is_file():
+        raise EPAError(f"EPA archive does not exist: {archive_path}")
+    try:
+        with zipfile.ZipFile(archive_path, "r") as archive:
+            for item in archive.infolist():
+                if not safe_archive_name(item.filename):
+                    raise EPAError(f"Unsafe archive path: {item.filename}")
+            metadata = load_manifest(archive)
+            bad_member = archive.testzip()
+            if bad_member:
+                raise EPAError(f"ZIP integrity check failed at: {bad_member}")
+    except zipfile.BadZipFile as exc:
+        raise EPAError(f"Not a valid ZIP-based EPA archive: {exc}") from exc
+
+    create_archive(
+        source, archive_path, metadata["name"], metadata["version"],
+        metadata["publisher"], metadata.get("description", ""),
+        metadata.get("require_admin", False), existing_manifest=metadata,
+    )
+    print(f"Updated existing EPA in place: {archive_path}")
 
 
 def inspect_archive(path: Path) -> None:
@@ -369,6 +397,9 @@ def build_parser() -> argparse.ArgumentParser:
     create.add_argument("--publisher", default="Unknown publisher")
     create.add_argument("--description", default="")
     create.add_argument("--require-admin", action="store_true", help="Request Windows administrator privileges when this EPA is launched.")
+    update_epa = commands.add_parser("update-epa", help="Rebuild an existing EPA from an updated source folder.")
+    update_epa.add_argument("archive", type=Path, help="Existing .epa file to replace.")
+    update_epa.add_argument("source", type=Path, help="Updated application source folder containing main.py.")
     inspect = commands.add_parser("inspect", help="Display EPA metadata.")
     inspect.add_argument("archive", type=Path)
     verify = commands.add_parser("verify", help="Check EPA structure and integrity.")
@@ -390,6 +421,9 @@ def main() -> int:
         if args.command == "create":
             create_archive(args.source, args.output or Path(f"{args.source.name}.epa"), args.name, args.app_version, args.publisher, args.description, args.require_admin)
             return 0
+        if args.command == "update-epa":
+            update_archive(args.archive, args.source)
+            return 0
         if args.command == "inspect":
             inspect_archive(args.archive)
             return 0
@@ -406,7 +440,14 @@ def main() -> int:
             print("Updating CubesEPA from the official GitHub repository... (free; internet required)")
             result = subprocess.run(command, check=False)
             if result.returncode == 0:
-                print("Update complete. Close and reopen CubesEPA.")
+                print("CubesEPA package updated.")
+                if os.name == "nt":
+                    try:
+                        shortcut = windows_integration.create_desktop_shortcut()
+                        print(f"Desktop shortcut refreshed: {shortcut}")
+                    except Exception as exc:
+                        print(f"Warning: CubesEPA updated, but the Desktop shortcut could not be refreshed: {exc}", file=sys.stderr)
+                print("Close and reopen CubesEPA to use the updated runtime.")
             return result.returncode
         if args.command == "install-windows":
             windows_integration.install_file_association()
