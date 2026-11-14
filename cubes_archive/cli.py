@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 from pathlib import Path, PurePosixPath
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -17,8 +18,10 @@ FORMAT_NAME = "EPA"
 FORMAT_VERSION = 1
 CHUNK_SIZE = 1024 * 1024
 
+
 class EPAError(Exception):
     """Raised when an EPA archive is invalid or cannot be processed."""
+
 
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
@@ -27,9 +30,11 @@ def sha256_file(path: Path) -> str:
             digest.update(chunk)
     return digest.hexdigest()
 
+
 def safe_archive_name(name: str) -> bool:
     path = PurePosixPath(name)
     return not path.is_absolute() and ".." not in path.parts and "\\" not in name and not (len(name) >= 2 and name[1] == ":")
+
 
 def load_manifest(archive: zipfile.ZipFile) -> dict:
     try:
@@ -62,14 +67,45 @@ def load_manifest(archive: zipfile.ZipFile) -> dict:
         raise EPAError(f"{REQUIREMENTS_NAME} must be a file, not a directory.")
     return manifest
 
+
+def _powershell_quote(value: str) -> str:
+    """Quote one argument for a PowerShell single-quoted string."""
+    return "'" + value.replace("'", "''") + "'"
+
+
+def _run_visible_powershell(commands: list[list[str]], cwd: Path) -> int:
+    """Run commands in a new PowerShell window and leave logs visible afterward."""
+    powershell = shutil.which("powershell.exe") or "powershell.exe"
+    lines = []
+    for command in commands:
+        quoted = " ".join(_powershell_quote(part) for part in command)
+        lines.append(f"& {quoted}")
+        lines.append("if ($LASTEXITCODE -ne 0) { $exitCode = $LASTEXITCODE; break }")
+    lines.extend([
+        "if ($null -eq $exitCode) { $exitCode = 0 }",
+        "Write-Host ''",
+        "Read-Host 'EPA finished. Press Enter to close this window'",
+        "exit $exitCode",
+    ])
+    script = "; ".join(lines)
+    creation_flags = getattr(subprocess, "CREATE_NEW_CONSOLE", 0)
+    result = subprocess.run(
+        [powershell, "-NoProfile", "-Command", script],
+        cwd=cwd,
+        check=False,
+        creationflags=creation_flags,
+    )
+    return result.returncode
+
+
 def create_archive(source: Path, output: Path, name: str | None, version: str, publisher: str, description: str) -> None:
     source = source.resolve()
     if not source.is_dir():
         raise EPAError(f"Source directory does not exist: {source}")
     if not (source / "main.py").is_file():
         raise EPAError("Source directory must contain main.py.")
-    # requirements.txt is optional: omitted means the EPA uses only Python's
-    # standard library (or dependencies already available in the environment).
+    # requirements.txt is optional: omitted means the EPA uses only the
+    # standard library or dependencies already available in the environment.
     output = output.resolve()
     if output == source or source in output.parents:
         raise EPAError("Output archive cannot be placed inside the source directory.")
@@ -95,12 +131,14 @@ def create_archive(source: Path, output: Path, name: str | None, version: str, p
     print(f"Created: {output}")
     print(f"SHA-256: {sha256_file(output)}")
 
+
 def inspect_archive(path: Path) -> None:
     with zipfile.ZipFile(path, "r") as archive:
         manifest = load_manifest(archive)
         print(json.dumps(manifest, indent=2))
         print(f"\nFiles: {sum(not item.is_dir() for item in archive.infolist())}")
         print(f"Dependencies file: {REQUIREMENTS_NAME if REQUIREMENTS_NAME in archive.namelist() else 'none (Python standard library assumed)'}")
+
 
 def verify_archive(path: Path) -> None:
     try:
@@ -123,6 +161,7 @@ def verify_archive(path: Path) -> None:
         print("\nNote: this checks archive structure and integrity, not publisher identity or application safety.")
     except zipfile.BadZipFile as exc:
         raise EPAError(f"Not a valid ZIP-based EPA archive: {exc}") from exc
+
 
 def run_archive(path: Path, app_args: list[str]) -> int:
     try:
@@ -147,34 +186,73 @@ def run_archive(path: Path, app_args: list[str]) -> int:
                 raise
     except zipfile.BadZipFile as exc:
         raise EPAError(f"Not a valid ZIP-based EPA archive: {exc}") from exc
+
     entrypoint = workdir.joinpath(*PurePosixPath(manifest["entrypoint"]).parts)
     requirements = workdir / REQUIREMENTS_NAME
     try:
         from .safety_dialog import confirm_launch
-        if not confirm_launch(manifest["name"], manifest.get("cubesepa_version")):
+        confirmed, run_silently = confirm_launch(
+            manifest["name"], manifest.get("cubesepa_version")
+        )
+        if not confirmed:
             print("Launch cancelled.")
             return 1
-        if requirements.is_file() and requirements.read_text(encoding="utf-8-sig").strip():
-            print(f"Installing dependencies from {REQUIREMENTS_NAME}...", flush=True)
-            result = subprocess.run([sys.executable, "-m", "pip", "install", "-r", str(requirements)], cwd=workdir, check=False, capture_output=True, text=True)
-            if result.returncode:
-                details = (result.stderr or result.stdout or "").strip()
-                raise EPAError(f"Dependency installation failed (pip exit code {result.returncode}); EPA was not launched.\n{details}")
-        print(f"Launching {manifest['name']} {manifest['version']}...", flush=True)
+
         environment = os.environ.copy()
         environment["CUBES_EPA_ICON"] = str(resolve_icon(workdir))
         environment["CUBES_EPA_NAME"] = str(manifest["name"])
-        launcher_python = sys.executable
+        launcher_command = [
+            str(Path(sys.executable).with_name("python.exe"))
+            if os.name == "nt" and Path(sys.executable).with_name("python.exe").is_file()
+            else sys.executable,
+            "-u", "-m", "cubes_archive.launcher", str(entrypoint), *app_args,
+        ]
+
+        if run_silently:
+            if requirements.is_file() and requirements.read_text(encoding="utf-8-sig").strip():
+                result = subprocess.run(
+                    [sys.executable, "-m", "pip", "install", "-r", str(requirements)],
+                    cwd=workdir, check=False, capture_output=True, text=True,
+                )
+                if result.returncode:
+                    details = (result.stderr or result.stdout or "").strip()
+                    raise EPAError(
+                        f"Dependency installation failed (pip exit code {result.returncode}); "
+                        f"EPA was not launched.\n{details}"
+                    )
+            launcher_python = sys.executable
+            if os.name == "nt":
+                pythonw = Path(sys.executable).with_name("pythonw.exe")
+                if pythonw.is_file():
+                    launcher_python = str(pythonw)
+            result = subprocess.run(
+                [launcher_python, "-m", "cubes_archive.launcher", str(entrypoint), *app_args],
+                cwd=workdir, env=environment, check=False,
+            )
+            return result.returncode
+
         if os.name == "nt":
-            pythonw = Path(sys.executable).with_name("pythonw.exe")
-            if pythonw.is_file():
-                launcher_python = str(pythonw)
-        result = subprocess.run([launcher_python, "-m", "cubes_archive.launcher", str(entrypoint), *app_args], cwd=workdir, env=environment, check=False)
-        return result.returncode
+            commands = []
+            if requirements.is_file() and requirements.read_text(encoding="utf-8-sig").strip():
+                commands.append([sys.executable, "-u", "-m", "pip", "install", "-r", str(requirements)])
+            commands.append(launcher_command)
+            return _run_visible_powershell(commands, workdir)
+
+        if requirements.is_file() and requirements.read_text(encoding="utf-8-sig").strip():
+            result = subprocess.run(
+                [sys.executable, "-m", "pip", "install", "-r", str(requirements)],
+                cwd=workdir, check=False,
+            )
+            if result.returncode:
+                return result.returncode
+        return subprocess.run(
+            launcher_command, cwd=workdir, env=environment, check=False
+        ).returncode
     except (OSError, UnicodeError) as exc:
         raise EPAError(f"Could not prepare EPA launch: {exc}") from exc
     finally:
         temporary.cleanup()
+
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="cubes", description="Cubes Archive — create and run Executable Python Archives (.epa).")
@@ -200,6 +278,7 @@ def build_parser() -> argparse.ArgumentParser:
     commands.add_parser("gui", help="Open the CubesEPA Tkinter desktop interface.")
     commands.add_parser("update", help="Update CubesEPA from its official GitHub repository.")
     return parser
+
 
 def main() -> int:
     args = build_parser().parse_args()
@@ -247,6 +326,7 @@ def main() -> int:
             print(f"cubes: error: {exc}", file=sys.stderr)
         return 1
     return 0
+
 
 if __name__ == "__main__":
     raise SystemExit(main())
