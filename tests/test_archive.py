@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from cubes_archive import __version__
-from cubes_archive.cli import create_archive, load_manifest, verify_archive
+from cubes_archive.cli import EPAError, create_archive, load_manifest, verify_archive
 
 
 class ArchiveTests(unittest.TestCase):
@@ -35,7 +35,7 @@ class ArchiveTests(unittest.TestCase):
             root = Path(folder)
             source = root / "project"
             source.mkdir()
-            (source / "main.py").write_text("print('hello')\\n", encoding="utf-8")
+            (source / "main.py").write_text("print('hello')\n", encoding="utf-8")
             output = root / "admin.epa"
 
             create_archive(source, output, "Admin Test", "1.0.0", "Tests", "", True)
@@ -59,10 +59,10 @@ class ArchiveTests(unittest.TestCase):
             }
             with zipfile.ZipFile(archive_path, "w") as archive:
                 archive.writestr("epa.json", json.dumps(manifest))
-                archive.writestr("main.py", "pass\\n")
+                archive.writestr("main.py", "pass\n")
 
             with zipfile.ZipFile(archive_path) as archive:
-                with self.assertRaisesRegex(Exception, "require_admin.*boolean"):
+                with self.assertRaisesRegex(EPAError, "require_admin.*boolean"):
                     load_manifest(archive)
 
 
