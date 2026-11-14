@@ -31,7 +31,7 @@ From the repository folder:
 py -m pip install --user --upgrade .
 ```
 
-Or run `cubes update` to reinstall the latest GitHub main branch. Updating is free and requires internet access.
+Or run `cubes update` to reinstall the latest GitHub main branch. On Windows, this also recreates the CubesEPA Desktop shortcut so it points to the current Python runtime and icon. Updating is free and requires internet access.
 
 ## Desktop shortcut
 
