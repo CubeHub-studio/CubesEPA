@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cubes-archive"
-version = "0.1.0"
+version = "0.2.0"
 description = "Create, inspect, verify, and run Executable Python Archives (.epa)."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -17,3 +17,6 @@ cubes = "cubes_archive.cli:main"
 
 [tool.setuptools]
 packages = ["cubes_archive"]
+
+[tool.setuptools.package-data]
+cubes_archive = ["assets/*.png"]
