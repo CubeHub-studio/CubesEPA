@@ -50,7 +50,7 @@ class ArchiveTests(unittest.TestCase):
                 self.assertEqual(manifest["publisher"], "Cubes, Studio")
                 self.assertEqual(manifest["description"], "Keep this description")
                 self.assertIs(manifest["require_admin"], True)
-                self.assertEqual(archive.read("main.py"), b"print('new')\n")
+                self.assertEqual(archive.read("main.py").replace(b"\r\n", b"\n"), b"print('new')\n")
                 self.assertEqual(archive.read("new_asset.txt"), b"updated")
 
     def test_require_admin_flag_is_written_to_manifest(self):
