@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path, PurePosixPath
 import subprocess
 import sys
@@ -11,6 +12,7 @@ import zipfile
 
 from . import __version__
 from . import windows_integration
+from .icons import resolve_icon
 
 MANIFEST_NAME = "epa.json"
 FORMAT_NAME = "EPA"
@@ -196,9 +198,13 @@ def run_archive(path: Path, app_args: list[str]) -> int:
         flush=True,
     )
     try:
+        environment = os.environ.copy()
+        environment["CUBES_EPA_ICON"] = str(resolve_icon(workdir))
+        environment["CUBES_EPA_NAME"] = str(manifest["name"])
         completed = subprocess.run(
-            [sys.executable, str(entrypoint), *app_args],
+            [sys.executable, "-m", "cubes_archive.launcher", str(entrypoint), *app_args],
             cwd=workdir,
+            env=environment,
             check=False,
         )
         return completed.returncode
@@ -255,6 +261,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="Arguments passed to the EPA application.",
     )
 
+    commands.add_parser("gui", help="Open the CubesEPA Tkinter desktop interface.")
+    commands.add_parser("update", help="Update CubesEPA from its official GitHub repository.")
+
     return parser
 
 
@@ -281,6 +290,21 @@ def main() -> int:
             return 0
         if args.command == "run":
             return run_archive(args.archive, args.app_args)
+        if args.command == "gui":
+            from .gui import main as gui_main
+            return gui_main()
+        if args.command == "update":
+            command = [
+                sys.executable, "-m", "pip", "install", "--upgrade",
+                "--force-reinstall",
+                "https://github.com/CubeHub-studio/CubesEPA/archive/refs/heads/main.zip",
+            ]
+            print("Updating CubesEPA from the official GitHub repository...")
+            print("This requires an internet connection; the update is free.")
+            completed = subprocess.run(command, check=False)
+            if completed.returncode == 0:
+                print("Update complete. Close and reopen CubesEPA.")
+            return completed.returncode
         if args.command == "install-windows":
             windows_integration.install_file_association()
             print("Registered .epa for the current Windows user.")
