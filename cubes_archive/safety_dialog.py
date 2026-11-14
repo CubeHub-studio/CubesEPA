@@ -9,7 +9,12 @@ WARNING_TEXT = (
     "data loss caused. Simply press the Continue button twice to launch it anyway."
 )
 
-def confirm_launch(app_name: str) -> bool:
+VERSION_WARNING = (
+    "This EPA was compiled with a different version of EPA that you are "
+    "currently using, this app is not guaranteed to work as intended."
+)
+
+def confirm_launch(app_name: str, compiled_version: str | None = None) -> bool:
     root = tk.Tk()
     root.withdraw()
     dialog = tk.Toplevel(root)
@@ -22,6 +27,8 @@ def confirm_launch(app_name: str) -> bool:
     outer.pack(fill="both", expand=True)
     ttk.Label(outer, text=f"Launching: {app_name}", font=("Segoe UI", 11, "bold")).pack(anchor="w", pady=(0, 10))
     ttk.Label(outer, text=WARNING_TEXT, wraplength=470, justify="left").pack(anchor="w")
+    if not isinstance(compiled_version, str) or not compiled_version.strip() or compiled_version != __import__("cubes_archive").__version__:
+        ttk.Label(outer, text=VERSION_WARNING, wraplength=470, justify="left").pack(anchor="w", pady=(10, 0))
     buttons = ttk.Frame(outer)
     buttons.pack(fill="x", pady=(18, 0))
     def continue_clicked():
