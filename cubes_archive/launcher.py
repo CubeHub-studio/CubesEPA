@@ -86,7 +86,7 @@ def main() -> int:
         log_path = _write_crash_log()
         detail = f"{type(exc).__name__}: {exc}"
         if log_path:
-            detail += f"\\n\\nFull details were saved to:\\n{log_path}"
+            detail += f"\n\nFull details were saved to:\n{log_path}"
         _show_launch_error(detail)
         return 1
 
