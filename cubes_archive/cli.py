@@ -65,6 +65,8 @@ def load_manifest(archive: zipfile.ZipFile) -> dict:
         requirements_info = None
     if requirements_info is not None and requirements_info.is_dir():
         raise EPAError(f"{REQUIREMENTS_NAME} must be a file, not a directory.")
+    if "require_admin" in manifest and not isinstance(manifest["require_admin"], bool):
+        raise EPAError("Manifest field 'require_admin' must be a boolean.")
     return manifest
 
 
@@ -74,7 +76,8 @@ def _powershell_quote(value: str) -> str:
 
 
 def _run_visible_powershell(
-    commands: list[list[str]], cwd: Path, environment: dict[str, str]
+    commands: list[list[str]], cwd: Path, environment: dict[str, str],
+    pause_at_end: bool = True,
 ) -> int:
     """Run commands in a new PowerShell window and leave logs visible afterward."""
     powershell = shutil.which("powershell.exe") or "powershell.exe"
@@ -82,11 +85,12 @@ def _run_visible_powershell(
     for command in commands:
         quoted = " ".join(_powershell_quote(part) for part in command)
         lines.append(f"if ($exitCode -eq 0) {{ & {quoted}; $exitCode = $LASTEXITCODE }}")
-    lines.extend([
-        "Write-Host ''",
-        "Read-Host 'EPA finished. Press Enter to close this window'",
-        "exit $exitCode",
-    ])
+    if pause_at_end:
+        lines.extend([
+            "Write-Host ''",
+            "Read-Host 'EPA finished. Press Enter to close this window'",
+        ])
+    lines.append("exit $exitCode")
     script = "; ".join(lines)
     creation_flags = getattr(subprocess, "CREATE_NEW_CONSOLE", 0)
     result = subprocess.run(
@@ -99,7 +103,61 @@ def _run_visible_powershell(
     return result.returncode
 
 
-def create_archive(source: Path, output: Path, name: str | None, version: str, publisher: str, description: str) -> None:
+
+def _run_elevated_windows(command: list[str], cwd: Path) -> int:
+    """Launch the EPA with the Windows UAC 'runas' verb and wait for it."""
+    if os.name != "nt":
+        raise EPAError("Administrator elevation is only supported on Windows.")
+
+    import ctypes
+    from ctypes import wintypes
+
+    class SHELLEXECUTEINFOW(ctypes.Structure):
+        _fields_ = [
+            ("cbSize", wintypes.DWORD),
+            ("fMask", wintypes.ULONG),
+            ("hwnd", wintypes.HWND),
+            ("lpVerb", wintypes.LPCWSTR),
+            ("lpFile", wintypes.LPCWSTR),
+            ("lpParameters", wintypes.LPCWSTR),
+            ("lpDirectory", wintypes.LPCWSTR),
+            ("nShow", ctypes.c_int),
+            ("hInstApp", ctypes.c_void_p),
+            ("lpIDList", ctypes.c_void_p),
+            ("lpClass", wintypes.LPCWSTR),
+            ("hkeyClass", wintypes.HANDLE),
+            ("dwHotKey", wintypes.DWORD),
+            ("hIconOrMonitor", ctypes.c_void_p),
+            ("hProcess", wintypes.HANDLE),
+        ]
+
+    info = SHELLEXECUTEINFOW()
+    info.cbSize = ctypes.sizeof(info)
+    info.fMask = 0x00000040  # SEE_MASK_NOCLOSEPROCESS
+    info.lpVerb = "runas"
+    info.lpFile = command[0]
+    info.lpParameters = subprocess.list2cmdline(command[1:])
+    info.lpDirectory = str(cwd)
+    info.nShow = 1  # SW_SHOWNORMAL
+
+    shell32 = ctypes.WinDLL("shell32", use_last_error=True)
+    if not shell32.ShellExecuteExW(ctypes.byref(info)):
+        error = ctypes.get_last_error()
+        if error == 1223:  # ERROR_CANCELLED: user declined the UAC prompt
+            raise EPAError("Administrator permission was declined. The EPA was not launched.")
+        raise ctypes.WinError(error)
+
+    try:
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel32.WaitForSingleObject(info.hProcess, 0xFFFFFFFF)
+        exit_code = wintypes.DWORD()
+        if not kernel32.GetExitCodeProcess(info.hProcess, ctypes.byref(exit_code)):
+            raise ctypes.WinError(ctypes.get_last_error())
+        return int(exit_code.value)
+    finally:
+        kernel32.CloseHandle(info.hProcess)
+
+def create_archive(source: Path, output: Path, name: str | None, version: str, publisher: str, description: str, require_admin: bool = False) -> None:
     source = source.resolve()
     if not source.is_dir():
         raise EPAError(f"Source directory does not exist: {source}")
@@ -110,7 +168,7 @@ def create_archive(source: Path, output: Path, name: str | None, version: str, p
     output = output.resolve()
     if output == source or source in output.parents:
         raise EPAError("Output archive cannot be placed inside the source directory.")
-    manifest = {"format": FORMAT_NAME, "format_version": FORMAT_VERSION, "name": name or source.name, "version": version, "publisher": publisher, "description": description, "entrypoint": "main.py", "cubesepa_version": __version__}
+    manifest = {"format": FORMAT_NAME, "format_version": FORMAT_VERSION, "name": name or source.name, "version": version, "publisher": publisher, "description": description, "entrypoint": "main.py", "cubesepa_version": __version__, "require_admin": require_admin}
     output.parent.mkdir(parents=True, exist_ok=True)
     temporary = output.with_suffix(output.suffix + ".tmp")
     try:
@@ -158,6 +216,7 @@ def verify_archive(path: Path) -> None:
         print(f"Publisher label: {manifest['publisher']}")
         print(f"Entrypoint: {manifest['entrypoint']}")
         print(f"Dependencies: {REQUIREMENTS_NAME + ' present' if has_requirements else 'none (Python standard library assumed)'}")
+        print(f"Administrator privileges requested: {'yes' if manifest.get('require_admin', False) else 'no'}")
         print(f"Archive SHA-256: {sha256_file(path)}")
         print("\nNote: this checks archive structure and integrity, not publisher identity or application safety.")
     except zipfile.BadZipFile as exc:
@@ -192,8 +251,9 @@ def run_archive(path: Path, app_args: list[str]) -> int:
     requirements = workdir / REQUIREMENTS_NAME
     try:
         from .safety_dialog import confirm_launch
+        requires_admin = manifest.get("require_admin", False)
         confirmed, run_silently = confirm_launch(
-            manifest["name"], manifest.get("cubesepa_version")
+            manifest["name"], manifest.get("cubesepa_version"), requires_admin
         )
         if not confirmed:
             print("Launch cancelled.")
@@ -209,8 +269,46 @@ def run_archive(path: Path, app_args: list[str]) -> int:
             "-u", "-m", "cubes_archive.launcher", str(entrypoint), *app_args,
         ]
 
+        has_requirements = requirements.is_file() and bool(
+            requirements.read_text(encoding="utf-8-sig").strip()
+        )
+
+        if requires_admin:
+            if os.name != "nt":
+                raise EPAError("This EPA requests administrator privileges, but UAC elevation is only supported on Windows.")
+            if has_requirements:
+                pip_command = [sys.executable, "-m", "pip", "install", "-r", str(requirements)]
+                if run_silently:
+                    result = subprocess.run(
+                        pip_command, cwd=workdir, check=False,
+                        capture_output=True, text=True,
+                    )
+                    if result.returncode:
+                        details = (result.stderr or result.stdout or "").strip()
+                        raise EPAError(
+                            f"Dependency installation failed (pip exit code {result.returncode}); "
+                            f"EPA was not launched.\\n{details}"
+                        )
+                else:
+                    result = _run_visible_powershell(
+                        [pip_command], workdir, environment, pause_at_end=False
+                    )
+                    if result:
+                        raise EPAError(f"Dependency installation failed (pip exit code {result}). EPA was not launched.")
+
+            elevated_python = sys.executable
+            if run_silently:
+                pythonw = Path(sys.executable).with_name("pythonw.exe")
+                if pythonw.is_file():
+                    elevated_python = str(pythonw)
+            elevated_command = [
+                elevated_python, "-u", "-m", "cubes_archive.launcher",
+                str(entrypoint), *app_args,
+            ]
+            return _run_elevated_windows(elevated_command, workdir)
+
         if run_silently:
-            if requirements.is_file() and requirements.read_text(encoding="utf-8-sig").strip():
+            if has_requirements:
                 result = subprocess.run(
                     [sys.executable, "-m", "pip", "install", "-r", str(requirements)],
                     cwd=workdir, check=False, capture_output=True, text=True,
@@ -219,7 +317,7 @@ def run_archive(path: Path, app_args: list[str]) -> int:
                     details = (result.stderr or result.stdout or "").strip()
                     raise EPAError(
                         f"Dependency installation failed (pip exit code {result.returncode}); "
-                        f"EPA was not launched.\n{details}"
+                        f"EPA was not launched.\\n{details}"
                     )
             launcher_python = sys.executable
             if os.name == "nt":
@@ -234,12 +332,12 @@ def run_archive(path: Path, app_args: list[str]) -> int:
 
         if os.name == "nt":
             commands = []
-            if requirements.is_file() and requirements.read_text(encoding="utf-8-sig").strip():
+            if has_requirements:
                 commands.append([sys.executable, "-u", "-m", "pip", "install", "-r", str(requirements)])
             commands.append(launcher_command)
             return _run_visible_powershell(commands, workdir, environment)
 
-        if requirements.is_file() and requirements.read_text(encoding="utf-8-sig").strip():
+        if has_requirements:
             result = subprocess.run(
                 [sys.executable, "-m", "pip", "install", "-r", str(requirements)],
                 cwd=workdir, check=False,
@@ -266,6 +364,7 @@ def build_parser() -> argparse.ArgumentParser:
     create.add_argument("--app-version", default="1.0.0")
     create.add_argument("--publisher", default="Unknown publisher")
     create.add_argument("--description", default="")
+    create.add_argument("--require-admin", action="store_true", help="Request Windows administrator privileges when this EPA is launched.")
     inspect = commands.add_parser("inspect", help="Display EPA metadata.")
     inspect.add_argument("archive", type=Path)
     verify = commands.add_parser("verify", help="Check EPA structure and integrity.")
@@ -285,7 +384,7 @@ def main() -> int:
     args = build_parser().parse_args()
     try:
         if args.command == "create":
-            create_archive(args.source, args.output or Path(f"{args.source.name}.epa"), args.name, args.app_version, args.publisher, args.description)
+            create_archive(args.source, args.output or Path(f"{args.source.name}.epa"), args.name, args.app_version, args.publisher, args.description, args.require_admin)
             return 0
         if args.command == "inspect":
             inspect_archive(args.archive)
