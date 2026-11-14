@@ -11,6 +11,7 @@ An EPA is a ZIP-based application bundle containing epa.json, a Python entrypoin
 - Create and run .epa applications.
 - Support an optional root-level requirements.txt using standard pip version specifiers.
 - Show a safety dialog before installing dependencies or launching the app. Continue must be clicked twice.
+- Optional Windows administrator elevation through the genuine UAC prompt when an EPA is packaged with `--require-admin`; ordinary EPAs do not request elevation.
 - Install declared dependencies with the active Python interpreter's pip; if requirements.txt is absent, assume no third-party dependencies are needed.
 - Apply an EPA assets/icon.png to Tkinter windows, with the CubesEPA icon as fallback.
 - Tkinter desktop interface and Windows Desktop shortcut.
@@ -88,7 +89,7 @@ Before CubesEPA installs dependencies or starts the app, a warning window appear
 
 ## Security model
 
-CubesEPA is **not a sandbox**. After confirmation, an EPA runs with the permissions of the current Windows user. Python packages in requirements.txt are installed into the active Python environment and may execute installation code. The Continue-twice prompt is a deliberate speed bump, not proof that the app is safe. The publisher field is self-declared and is not cryptographically authenticated.
+CubesEPA is **not a sandbox**. After confirmation, an EPA runs with the permissions of the current Windows user. Python packages in requirements.txt are installed into the active Python environment and may execute installation code. The Continue-twice prompt is a deliberate speed bump, not proof that the app is safe. The publisher field is self-declared and is not cryptographically authenticated. EPAs that request administrator access are clearly identified in the safety dialog; Windows then shows its genuine UAC prompt. If the user declines, the app is not launched. Dependencies are installed before elevation and are not installed as administrator.
 
 ## License
 
