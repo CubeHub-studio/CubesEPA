@@ -19,14 +19,16 @@ VERSION_WARNING = (
 )
 
 
-def confirm_launch(app_name: str, compiled_version: str | None = None) -> bool:
-    # Use the visible window as the Tk root. A withdrawn root with a transient
-    # Toplevel can leave the modal warning hidden behind other windows on Windows.
+def confirm_launch(
+    app_name: str, compiled_version: str | None = None
+) -> tuple[bool, bool]:
+    """Return (confirmed, run_silently); silent mode is enabled by default."""
     dialog = tk.Tk()
     dialog.title("CubesEPA — Safety warning")
     dialog.resizable(False, False)
 
     state = {"confirmed": False, "clicks": 0}
+    silent_var = tk.BooleanVar(value=True)
 
     outer = ttk.Frame(dialog, padding=18)
     outer.pack(fill="both", expand=True)
@@ -55,6 +57,12 @@ def confirm_launch(app_name: str, compiled_version: str | None = None) -> bool:
             wraplength=470,
             justify="left",
         ).pack(anchor="w", pady=(10, 0))
+
+    ttk.Checkbutton(
+        outer,
+        text="Run silently (no logs shown during run)",
+        variable=silent_var,
+    ).pack(anchor="w", pady=(14, 0))
 
     buttons = ttk.Frame(outer)
     buttons.pack(fill="x", pady=(18, 0))
@@ -90,4 +98,4 @@ def confirm_launch(app_name: str, compiled_version: str | None = None) -> bool:
     dialog.focus_force()
     dialog.mainloop()
 
-    return state["confirmed"]
+    return state["confirmed"], silent_var.get()
