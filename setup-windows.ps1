@@ -22,15 +22,21 @@ try {
 
     Write-Host "Running CubesEPA installer..." -ForegroundColor Cyan
     $installerPath = Join-Path $repoFolder.FullName "install-windows.ps1"
-    $shellName = if ($PSVersionTable.PSEdition -eq "Core") { "pwsh.exe" } else { "powershell.exe" }
-    $shellPath = (Get-Command $shellName -ErrorAction Stop).Source
 
-    # Run the downloaded child script with a process-scoped policy override.
-    # This does not change the user's machine-wide or current-user execution policy.
-    & $shellPath -NoProfile -ExecutionPolicy Bypass -File $installerPath
-    $installerExitCode = $LASTEXITCODE
-    if ($installerExitCode -ne 0) {
-        throw "The CubesEPA installer returned exit code $installerExitCode."
+    # The bootstrapper itself is being evaluated with iex. Evaluate the downloaded
+    # installer the same way so restrictive script-file execution policies do not
+    # block it. The installer receives its repository path through a temporary env var.
+    $previousInstallerRoot = $env:CUBESEPA_INSTALLER_ROOT
+    try {
+        $env:CUBESEPA_INSTALLER_ROOT = $repoFolder.FullName
+        $installerText = Get-Content -LiteralPath $installerPath -Raw
+        Invoke-Expression $installerText
+        if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) {
+            throw "The CubesEPA installer returned exit code $LASTEXITCODE."
+        }
+    }
+    finally {
+        $env:CUBESEPA_INSTALLER_ROOT = $previousInstallerRoot
     }
 
     Write-Host ""
