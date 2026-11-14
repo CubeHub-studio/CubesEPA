@@ -13,6 +13,10 @@ An EPA is a ZIP-based application bundle containing a manifest, a Python entrypo
 - Inspect archive metadata.
 - Check ZIP integrity, required metadata, and archive paths.
 - Launch an EPA using the active Python interpreter.
+- Automatically apply an EPA's `assets/icon.png` to Tkinter windows, with the bundled CubesEPA icon as fallback.
+- Open the CubesEPA Tkinter desktop interface with `cubes gui`.
+- Update CubesEPA directly from its official GitHub repository with `cubes update`.
+- Create a Desktop shortcut that opens the GUI.
 - Uses Python's standard library; no runtime third-party dependencies.
 
 ## Requirements
@@ -66,11 +70,25 @@ Double-clicking an associated `.epa` file runs its declared Python entrypoint.
 EPA applications execute with your Windows account's permissions; only open
 archives from sources you trust.
 
-Create an optional Desktop shortcut to the CLI help:
+Open the graphical desktop interface:
+
+```powershell
+cubes gui
+```
+
+Create a Desktop shortcut named `CubesEPA` that launches the graphical interface:
 
 ```powershell
 cubes create-shortcut
 ```
+
+Update to the latest code on the official GitHub `main` branch (internet connection required; free):
+
+```powershell
+cubes update
+```
+
+The updater uses the current Python interpreter's `pip` to reinstall CubesEPA from GitHub. Close and reopen the GUI after it finishes.
 
 Remove the association before uninstalling the package:
 
@@ -127,6 +145,12 @@ Arguments can be passed to the application after `--`:
 cubes run .\HelloEPA.epa -- --mode demo
 ```
 
+## Application icons
+
+Add an image at `assets/icon.png` in an EPA project to use it as that app's icon. When Cubes Archive launches the EPA, it automatically applies the image to Tkinter `Tk` and `Toplevel` windows. If the app does not include that file, Cubes Archive uses its bundled `assets/icon.png` icon instead. This automatic window-icon integration applies to Tkinter applications; other GUI frameworks must load their icon using their own APIs.
+
+The `.epa` file association icon is shared by Windows for the file type. The per-app icon is applied to the running Tkinter window, not to every `.epa` file in Explorer.
+
 ## EPA format, version 1
 
 An EPA is a ZIP archive with the `.epa` extension. Its root must contain `epa.json` and the entrypoint declared in that manifest.
@@ -167,7 +191,9 @@ The `publisher` field is a publisher-supplied display label. In this initial rel
 | `cubes run FILE.epa` | Extract to a temporary directory and run its entrypoint |
 | `cubes install-windows` | Register the .epa file association for the current user |
 | `cubes uninstall-windows` | Remove the Cubes Archive .epa association |
-| `cubes create-shortcut` | Create a Desktop shortcut to CLI help |
+| `cubes gui` | Open the Tkinter desktop interface |
+| `cubes update` | Reinstall the latest version from the official GitHub repository |
+| `cubes create-shortcut` | Create a Desktop shortcut that opens the GUI |
 | `cubes --version` | Display the runtime version |
 | `cubes --help` | Display help |
 
@@ -192,7 +218,7 @@ Do not run an EPA unless you trust its source and understand that it contains ex
 
 This is an early CLI-focused release.
 
-- No graphical interface.
+- The graphical interface uses Tkinter, which must be included with your Python installation.
 - Windows integration is opt-in and per-user; a conventional signed installer is not included.
 - Desktop shortcut creation is supported; automatic shortcut removal is not.
 - No cryptographic publisher signatures yet.
