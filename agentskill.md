@@ -89,7 +89,7 @@ The current format uses this structure:
   "publisher": "Publisher name",
   "description": "Short description of the application.",
   "entrypoint": "main.py",
-  "cubesepa_version": "0.3.4",
+  "cubesepa_version": "0.3.5",
   "require_admin": false,
   "allow_super_fullscreen": false
 }
