@@ -436,18 +436,43 @@ def main() -> int:
             from .gui import main as gui_main
             return gui_main()
         if args.command == "update":
-            command = [sys.executable, "-m", "pip", "install", "--user", "--upgrade", "--force-reinstall", "https://github.com/CubeHub-studio/CubesEPA/archive/refs/heads/main.zip"]
-            print("Updating CubesEPA from the official GitHub repository... (free; internet required)")
+            print("Starting the official CubesEPA updater... (free; internet required)")
+            if os.name == "nt":
+                import urllib.request
+
+                updater_url = "https://raw.githubusercontent.com/CubeHub-studio/CubesEPA/main/update-windows.ps1"
+                updater_dir = Path(os.environ.get("LOCALAPPDATA", str(Path.home() / "AppData" / "Local"))) / "CubesArchive"
+                updater_dir.mkdir(parents=True, exist_ok=True)
+                updater_path = updater_dir / "update-windows.ps1"
+                temporary_path = updater_path.with_suffix(".ps1.tmp")
+                try:
+                    with urllib.request.urlopen(updater_url, timeout=30) as response:
+                        updater_content = response.read()
+                    if not updater_content or b"CubesEPA updater" not in updater_content:
+                        raise EPAError("The downloaded updater did not pass its basic content check.")
+                    temporary_path.write_bytes(updater_content)
+                    temporary_path.replace(updater_path)
+                except Exception:
+                    temporary_path.unlink(missing_ok=True)
+                    raise
+
+                powershell = shutil.which("powershell.exe") or str(Path(os.environ.get("WINDIR", r"C:\\Windows")) / "System32" / "WindowsPowerShell" / "v1.0" / "powershell.exe")
+                print(f"Launching updater: {updater_path}")
+                print("The updater will request administrator approval through Windows UAC.")
+                creation_flags = getattr(subprocess, "CREATE_NEW_CONSOLE", 0)
+                subprocess.Popen(
+                    [powershell, "-NoProfile", "-File", str(updater_path)],
+                    cwd=str(Path.home()),
+                    creationflags=creation_flags,
+                )
+                return 0
+
+            command = [
+                sys.executable, "-m", "pip", "install", "--user", "--upgrade",
+                "--force-reinstall",
+                "https://github.com/CubeHub-studio/CubesEPA/archive/refs/heads/main.zip",
+            ]
             result = subprocess.run(command, check=False)
-            if result.returncode == 0:
-                print("CubesEPA package updated.")
-                if os.name == "nt":
-                    try:
-                        shortcut = windows_integration.create_desktop_shortcut()
-                        print(f"Desktop shortcut refreshed: {shortcut}")
-                    except Exception as exc:
-                        print(f"Warning: CubesEPA updated, but the Desktop shortcut could not be refreshed: {exc}", file=sys.stderr)
-                print("Close and reopen CubesEPA to use the updated runtime.")
             return result.returncode
         if args.command == "install-windows":
             windows_integration.install_file_association()
