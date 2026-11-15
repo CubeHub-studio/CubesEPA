@@ -456,7 +456,7 @@ def main() -> int:
                     temporary_path.unlink(missing_ok=True)
                     raise
 
-                powershell = shutil.which("powershell.exe") or str(Path(os.environ.get("WINDIR", r"C:\\Windows")) / "System32" / "WindowsPowerShell" / "v1.0" / "powershell.exe")
+                powershell = shutil.which("powershell.exe") or str(Path(os.environ.get("WINDIR", "C:/Windows")) / "System32" / "WindowsPowerShell" / "v1.0" / "powershell.exe")
                 print(f"Launching updater: {updater_path}")
                 print("The updater will request administrator approval through Windows UAC.")
                 creation_flags = getattr(subprocess, "CREATE_NEW_CONSOLE", 0)
