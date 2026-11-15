@@ -67,6 +67,8 @@ def load_manifest(archive: zipfile.ZipFile) -> dict:
         raise EPAError(f"{REQUIREMENTS_NAME} must be a file, not a directory.")
     if "require_admin" in manifest and not isinstance(manifest["require_admin"], bool):
         raise EPAError("Manifest field 'require_admin' must be a boolean.")
+    if "allow_super_fullscreen" in manifest and not isinstance(manifest["allow_super_fullscreen"], bool):
+        raise EPAError("Manifest field 'allow_super_fullscreen' must be a boolean.")
     return manifest
 
 
@@ -157,7 +159,7 @@ def _run_elevated_windows(command: list[str], cwd: Path) -> int:
     finally:
         kernel32.CloseHandle(info.hProcess)
 
-def create_archive(source: Path, output: Path, name: str | None, version: str, publisher: str, description: str, require_admin: bool = False, existing_manifest: dict | None = None) -> None:
+def create_archive(source: Path, output: Path, name: str | None, version: str, publisher: str, description: str, require_admin: bool = False, allow_super_fullscreen: bool = False, existing_manifest: dict | None = None) -> None:
     source = source.resolve()
     if not source.is_dir():
         raise EPAError(f"Source directory does not exist: {source}")
@@ -169,7 +171,7 @@ def create_archive(source: Path, output: Path, name: str | None, version: str, p
     if output == source or source in output.parents:
         raise EPAError("Output archive cannot be placed inside the source directory.")
     manifest = dict(existing_manifest or {})
-    manifest.update({"format": FORMAT_NAME, "format_version": FORMAT_VERSION, "name": name or source.name, "version": version, "publisher": publisher, "description": description, "entrypoint": "main.py", "cubesepa_version": __version__, "require_admin": require_admin})
+    manifest.update({"format": FORMAT_NAME, "format_version": FORMAT_VERSION, "name": name or source.name, "version": version, "publisher": publisher, "description": description, "entrypoint": "main.py", "cubesepa_version": __version__, "require_admin": require_admin, "allow_super_fullscreen": allow_super_fullscreen})
     output.parent.mkdir(parents=True, exist_ok=True)
     temporary = output.with_suffix(output.suffix + ".tmp")
     try:
@@ -214,7 +216,7 @@ def update_archive(archive_path: Path, source: Path) -> None:
     create_archive(
         source, archive_path, metadata["name"], metadata["version"],
         metadata["publisher"], metadata.get("description", ""),
-        metadata.get("require_admin", False), existing_manifest=metadata,
+        metadata.get("require_admin", False), metadata.get("allow_super_fullscreen", False), existing_manifest=metadata,
     )
     print(f"Updated existing EPA in place: {archive_path}")
 
@@ -290,6 +292,7 @@ def run_archive(path: Path, app_args: list[str]) -> int:
         environment = os.environ.copy()
         environment["CUBES_EPA_ICON"] = str(resolve_icon(workdir))
         environment["CUBES_EPA_NAME"] = str(manifest["name"])
+        environment["CUBES_EPA_SUPER_FULLSCREEN"] = "1" if manifest.get("allow_super_fullscreen", False) else "0"
         launcher_command = [
             str(Path(sys.executable).with_name("python.exe"))
             if os.name == "nt" and Path(sys.executable).with_name("python.exe").is_file()
@@ -397,6 +400,7 @@ def build_parser() -> argparse.ArgumentParser:
     create.add_argument("--publisher", default="Unknown publisher")
     create.add_argument("--description", default="")
     create.add_argument("--require-admin", action="store_true", help="Request Windows administrator privileges when this EPA is launched.")
+    create.add_argument("--allowsuperfullscreen", action="store_true", help="Enable F11 fullscreen toggling for Tkinter windows in this EPA.")
     update_epa = commands.add_parser("update-epa", help="Rebuild an existing EPA from an updated source folder.")
     update_epa.add_argument("archive", type=Path, help="Existing .epa file to replace.")
     update_epa.add_argument("source", type=Path, help="Updated application source folder containing main.py.")
@@ -419,7 +423,7 @@ def main() -> int:
     args = build_parser().parse_args()
     try:
         if args.command == "create":
-            create_archive(args.source, args.output or Path(f"{args.source.name}.epa"), args.name, args.app_version, args.publisher, args.description, args.require_admin)
+            create_archive(args.source, args.output or Path(f"{args.source.name}.epa"), args.name, args.app_version, args.publisher, args.description, args.require_admin, args.allowsuperfullscreen)
             return 0
         if args.command == "update-epa":
             update_archive(args.archive, args.source)
