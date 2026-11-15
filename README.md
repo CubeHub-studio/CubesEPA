@@ -132,7 +132,7 @@ pillow>=10
 Create, verify, and run:
 
 ```powershell
-cubes create .\HelloEPA --publisher "Cubes, Studio." --app-version 1.0.0 --allowsuperfullscreen
+cubes create .\HelloEPA --publisher "Cubes, Studio." --app-version 1.0.0
 cubes verify .\HelloEPA.epa
 cubes run .\HelloEPA.epa
 ```
