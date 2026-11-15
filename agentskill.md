@@ -132,7 +132,7 @@ The preferred packaging workflow is:
 Example in PowerShell:
 
 ```powershell
-cubes create .\MyEPA --name "My EPA" --app-version 1.0.0 --publisher "Your Publisher" --description "What the app does" --allowsuperfullscreen
+cubes create .\MyEPA --name "My EPA" --app-version 1.0.0 --publisher "Your Publisher" --description "What the app does"
 ```
 
 This creates `MyEPA.epa` in the current working directory when no output path is
@@ -145,6 +145,19 @@ cubes create .\MyEPA --output .\dist\MyEPA.epa --name "My EPA" --app-version 1.0
 The output directory is created if needed. The source project must be outside the
 output archive's destination directory; the packager prevents writing the output
 inside the source tree.
+
+### Optional F11 fullscreen support (Tkinter)
+
+Add `--allowsuperfullscreen` when creating an EPA to enable the launcher's F11
+fullscreen toggle for Tkinter root windows and their `Toplevel` windows:
+
+```powershell
+cubes create .\MyEPA --name "My EPA" --publisher "Your Publisher" --allowsuperfullscreen
+```
+
+F11 enters fullscreen; pressing it again restores the previous window geometry and
+state. This feature is opt-in and does not apply to other GUI toolkits. Without the
+flag, the launcher does not install the F11 binding.
 
 The CLI recursively includes regular files from the project directory, preserving
 their relative paths. It rejects symbolic links and reserves `epa.json` for generated
