@@ -15,6 +15,7 @@ An EPA is a ZIP-based application bundle containing `epa.json`, a Python entrypo
 - Optional Windows administrator elevation through the genuine UAC prompt when an EPA is packaged with `--require-admin`; ordinary EPAs do not request elevation.
 - Install declared dependencies with the active Python interpreter's pip. If `requirements.txt` is absent or empty, no dependencies are installed.
 - Apply an EPA's `assets/icon.png` to Tkinter windows, with the CubesEPA icon as fallback.
+- Optional `--allowsuperfullscreen` packaging flag adds an F11 fullscreen toggle to Tkinter windows.
 - Tkinter desktop interface and Windows Desktop shortcut.
 - Per-user Windows `.epa` file association.
 
@@ -131,7 +132,7 @@ pillow>=10
 Create, verify, and run:
 
 ```powershell
-cubes create .\HelloEPA --publisher "Cubes, Studio." --app-version 1.0.0
+cubes create .\HelloEPA --publisher "Cubes, Studio." --app-version 1.0.0 --allowsuperfullscreen
 cubes verify .\HelloEPA.epa
 cubes run .\HelloEPA.epa
 ```
@@ -140,20 +141,30 @@ You can also double-click an `.epa` file after registering the association, subj
 
 Before CubesEPA installs dependencies or starts the app, a warning window appears. Click Continue twice to proceed, or Cancel. The "Run silently" option is enabled by default; clear it to show a PowerShell window with live logs. If the EPA's recorded CubesEPA packaging version differs from the installed runtime—or is missing in an older EPA—the warning also explains that compatibility is not guaranteed. If pip cannot install a dependency, the EPA is not launched.
 
+### F11 fullscreen support (Tkinter)
+
+Add `--allowsuperfullscreen` to `cubes create` to enable F11 fullscreen toggling in the EPA's Tkinter windows:
+
+```powershell
+cubes create .\MyEPA --name "My EPA" --publisher "Your Publisher" --allowsuperfullscreen
+```
+
+Press F11 to enter fullscreen; press it again to restore the previous window size and state. This is opt-in and applies to Tkinter root windows and their `Toplevel` windows while the application has focus. Other GUI toolkits are not affected. Without the flag, CubesEPA does not install this shortcut.
+
 To rebuild an existing EPA in place after changing its source folder, run:
 
 ```powershell
 cubes update-epa .\MyEPA.epa .\MyEPA
 ```
 
-This rebuilds the same `.epa` file, preserving its app name, app version, publisher, description, administrator requirement, and additional manifest metadata. It updates the recorded CubesEPA packaging version.
+This rebuilds the same `.epa` file, preserving its app name, app version, publisher, description, administrator requirement, fullscreen setting, and additional manifest metadata. It updates the recorded CubesEPA packaging version.
 
 ## Commands
 
 | Command | Purpose |
 |---|---|
 | `cubes gui` | Open the desktop interface |
-| `cubes create FOLDER` | Package a project |
+| `cubes create FOLDER` | Package a project; supports `--allowsuperfullscreen` for Tkinter F11 fullscreen toggling |
 | `cubes update-epa FILE.epa SOURCE` | Rebuild an existing EPA from updated source files |
 | `cubes run FILE.epa` | Confirm and launch an EPA |
 | `cubes inspect FILE.epa` | Show EPA metadata |
