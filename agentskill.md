@@ -90,7 +90,8 @@ The current format uses this structure:
   "description": "Short description of the application.",
   "entrypoint": "main.py",
   "cubesepa_version": "0.3.4",
-  "require_admin": false
+  "require_admin": false,
+  "allow_super_fullscreen": false
 }
 ```
 
@@ -107,11 +108,13 @@ Field meanings:
 | `entrypoint` | Path inside the archive to the Python entrypoint. The current CLI packager sets this to `main.py`. |
 | `cubesepa_version` | CubesEPA runtime version used to compile/package the archive. The packager fills this in automatically. |
 | `require_admin` | Boolean. When `true`, requests Windows administrator privileges at launch through the official UAC prompt. Defaults to `false`. |
+| `allow_super_fullscreen` | Boolean. When `true`, the CubesEPA launcher adds an F11 fullscreen toggle to Tkinter windows. Defaults to `false`. |
 
 When using `cubes create`, do not manually write or override this metadata. The
 CLI generates it and records the installed CubesEPA version. Use the
-`--require-admin` option when an app genuinely needs administrator privileges;
-do not hand-edit the generated manifest.
+`--require-admin` option when an app genuinely needs administrator privileges, and
+`--allowsuperfullscreen` when the app should support the launcher's F11 fullscreen
+toggle for Tkinter windows; do not hand-edit the generated manifest.
 
 Older archives may lack `cubesepa_version`. The runtime can display a compatibility
 warning when this value is missing or differs from the installed runtime version.
@@ -129,7 +132,7 @@ The preferred packaging workflow is:
 Example in PowerShell:
 
 ```powershell
-cubes create .\MyEPA --name "My EPA" --app-version 1.0.0 --publisher "Your Publisher" --description "What the app does"
+cubes create .\MyEPA --name "My EPA" --app-version 1.0.0 --publisher "Your Publisher" --description "What the app does" --allowsuperfullscreen
 ```
 
 This creates `MyEPA.epa` in the current working directory when no output path is
@@ -247,6 +250,7 @@ configured for that layout. With the current `cubes create` command, the root
 - CubesEPA extracts archive contents into a temporary directory before launch.
 - The application working directory is set to the extracted project directory.
 - The launcher sets `CUBES_EPA_NAME` and `CUBES_EPA_ICON` environment variables.
+- When `allow_super_fullscreen` is true, the launcher enables F11 fullscreen toggling for Tkinter root windows and their Toplevel windows. F11 enters or exits fullscreen and restores the prior geometry/window state. This opt-in hook does not add fullscreen support to other GUI toolkits.
 - The icon variable points to the resolved icon path; a default CubesEPA icon may be
   used if the project does not supply a supported icon.
 - The safety confirmation appears before dependency installation and app execution.
